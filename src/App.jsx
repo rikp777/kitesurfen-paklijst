@@ -296,7 +296,7 @@ export default function App() {
       </div>
 
       {/* Categories */}
-      <div style={{ maxWidth: 480, margin: "-48px auto 0", padding: "0 16px" }}>
+      <div style={{ maxWidth: 480, margin: "-48px auto 0", padding: "0 16px", position: "relative", zIndex: 1 }}>
         {categories.map((cat) => {
           const visibleItems = cat.items.filter((i) => showIncluded || !i.included);
           if (visibleItems.length === 0) return null;
