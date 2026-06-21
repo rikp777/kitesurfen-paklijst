@@ -5,8 +5,27 @@ Interactieve paklijst voor je kitesurftrip naar Denemarken met Ripstar (4 juli).
 ## Features
 - ✅ Afvinken per item, opgeslagen in je browser (localStorage)
 - 📸 Bewijs foto's uploaden per categorie
+- 👗 Outfits samenstellen uit kledingfoto's
 - 📷 Screenshot exporteren als PNG
 - 🔄 Reset knop
+
+### 📱 Mobiele features
+- ⬇️ **Installeerbaar** als app op je telefoon (PWA, "Add to Home Screen")
+- 📡 **Offline** bruikbaar via service worker — werkt ook zonder bereik op het strand
+- 🌬️ **Live wind** voor de kitespot (Open-Meteo) met "kan ik kiten?"-oordeel
+- 🔍 **Zoeken** door alle items
+- 📤 **Delen** van je voortgang via de native share-sheet
+- 📳 **Haptische feedback** bij afvinken
+- 🎉 **Confetti** als alles ingepakt is
+
+## Codestructuur
+SOLID/clean-code opzet — data, logica en UI zijn gescheiden:
+- `src/data/` — de paklijst als pure data (single source of truth)
+- `src/constants/` — thema-tokens & storage-keys
+- `src/hooks/` — herbruikbare logica (`useLocalStorage`, `usePackingList`, `usePhotos`, …)
+- `src/components/` — presentatie-componenten (stateless waar mogelijk)
+- `src/utils/` — losse helpers (device-API's, share)
+- `src/App.jsx` — dunne composition root
 
 ## Deploy naar GitHub Pages (3 stappen)
 

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect width="512" height="512" rx="96" fill="#0C1A2E"/>
+  <defs>
+    <linearGradient id="sky" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0EA5E9"/>
+      <stop offset="1" stop-color="#0369A1"/>
+    </linearGradient>
+  </defs>
+  <!-- kite -->
+  <path d="M256 96 L392 168 L256 240 L120 168 Z" fill="url(#sky)" stroke="#7DD3FC" stroke-width="10" stroke-linejoin="round"/>
+  <path d="M256 96 L256 240 M120 168 L392 168" stroke="#0C1A2E" stroke-width="8"/>
+  <!-- lines -->
+  <path d="M120 168 L250 392 M392 168 L262 392" stroke="#7DD3FC" stroke-width="8" stroke-linecap="round"/>
+  <!-- bar -->
+  <rect x="232" y="384" width="48" height="16" rx="8" fill="#34D399"/>
+  <!-- wave -->
+  <path d="M64 432 q48 -32 96 0 t96 0 t96 0 t96 0" fill="none" stroke="#38BDF8" stroke-width="14" stroke-linecap="round"/>
+</svg>

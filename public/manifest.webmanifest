@@ -1,0 +1,19 @@
+{
+  "name": "Kitesurfen Paklijst — Denemarken",
+  "short_name": "Paklijst 🪁",
+  "description": "Interactieve kitesurf paklijst met voortgang, bewijsfoto's en live wind.",
+  "start_url": ".",
+  "scope": ".",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0C1A2E",
+  "theme_color": "#0C1A2E",
+  "icons": [
+    {
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
