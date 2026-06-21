@@ -3,7 +3,9 @@
 Interactieve paklijst voor je kitesurftrip naar Denemarken met Ripstar (4 juli).
 
 ## Features
-- ✅ Afvinken per item, opgeslagen in je browser (localStorage)
+- 🎒 **Paklijst** — afvinken per item, opgeslagen in je browser (localStorage)
+- 📅 **Dagindeling** — hoe een dag op het Ripstar-beginnerscamp eruitziet (timeline)
+- 🗺️ **Kaart** — waar het kamp ligt aan het Ringkøbing Fjord + leuke uitjes in de buurt
 - 📸 Bewijs foto's uploaden per categorie
 - 👗 Outfits samenstellen uit kledingfoto's
 - 📷 Screenshot exporteren als PNG
@@ -20,12 +22,16 @@ Interactieve paklijst voor je kitesurftrip naar Denemarken met Ripstar (4 juli).
 
 ## Codestructuur
 SOLID/clean-code opzet — data, logica en UI zijn gescheiden:
-- `src/data/` — de paklijst als pure data (single source of truth)
+- `src/data/` — paklijst, dagindeling & kaartlocaties als pure data (single source of truth)
 - `src/constants/` — thema-tokens & storage-keys
 - `src/hooks/` — herbruikbare logica (`useLocalStorage`, `usePackingList`, `usePhotos`, …)
 - `src/components/` — presentatie-componenten (stateless waar mogelijk)
+- `src/views/` — schermen per tab (`PackingView`)
 - `src/utils/` — losse helpers (device-API's, share)
-- `src/App.jsx` — dunne composition root
+- `src/App.jsx` — dunne tab-shell / composition root
+
+De kaart gebruikt **Leaflet + OpenStreetMap** (geen API-key) en wordt lazy-loaded
+zodat de paklijst snel blijft laden.
 
 ## Deploy naar GitHub Pages (3 stappen)
 
