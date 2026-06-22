@@ -11,7 +11,7 @@ function formatDateRange(startDate, endDate) {
   return `${s.getDate()} ${months[s.getMonth()]} – ${e.getDate()} ${months[e.getMonth()]} ${s.getFullYear()}`;
 }
 
-export default function SideNav({ active, onChange }) {
+export default function SideNav({ active, onChange, onTripSelect }) {
   const { trips, activeTrip, setActiveTripId } = useTrip();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -56,7 +56,7 @@ export default function SideNav({ active, onChange }) {
           return (
             <button
               key={trip.id}
-              onClick={() => setActiveTripId(trip.id)}
+              onClick={() => { setActiveTripId(trip.id); onTripSelect?.(); }}
               style={{
                 width: "100%",
                 background: isActive ? `${colors.sky}18` : "none",

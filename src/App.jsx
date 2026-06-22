@@ -18,7 +18,7 @@ const MapView = lazy(() => import("./components/MapView"));
 
 export default function App() {
   const [tab, setTab] = useState("home");
-  const [tripDetail, setTripDetail] = useState(false);
+  const [tripDetail, setTripDetail] = useState(true);
   const [mapFocus, setMapFocus] = useState(null);
   const { toast, showToast } = useToast();
   const isDesktop = useBreakpoint();
@@ -67,7 +67,11 @@ export default function App() {
     return (
       <div style={{ fontFamily: font, background: colors.bg, minHeight: "100vh", display: "flex" }}>
         <Toast message={toast} />
-        <SideNav active={tab} onChange={(t) => { setTab(t); if (t !== "home") setTripDetail(false); }} />
+        <SideNav
+          active={tab}
+          onChange={setTab}
+          onTripSelect={() => { setTab("home"); setTripDetail(true); }}
+        />
         <div style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
           <TabContent />
         </div>
@@ -84,7 +88,7 @@ export default function App() {
     }}>
       <Toast message={toast} />
       <TabContent />
-      <BottomNav active={tab} onChange={(t) => { setTab(t); if (t !== "home") setTripDetail(false); }} />
+      <BottomNav active={tab} onChange={setTab} />
     </div>
   );
 }
