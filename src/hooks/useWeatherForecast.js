@@ -56,6 +56,76 @@ export function windVerdict(kn) {
   return           { label: "Gevaarlijk",         color: "#EF4444", emoji: "⚠️" };
 }
 
+// Session verdict for camp days: should the kite school run lessons?
+// Based on kiting-hours wind (09:00–18:00 average & max) and weather code.
+export function sessionVerdict(day) {
+  const { windKitingAvg: avg, windKitingMax: max, windGust, code, windDir } = day;
+
+  // Thunderstorm = hard cancel regardless of wind
+  if (code >= 95) {
+    return {
+      status: "cancel",
+      emoji: "⛈️",
+      short: "Waarschijnlijk geannuleerd",
+      reason: "Onweer verwacht — kiten bij een onweersbui is levensgevaarlijk. De les wordt door Ripstar geannuleerd.",
+      color: "#EF4444",
+    };
+  }
+
+  // Too little wind during kiting hours
+  if (avg < 8) {
+    return {
+      status: "cancel",
+      emoji: "😴",
+      short: "Kans op annulering — te weinig wind",
+      reason: `Gemiddeld slechts ${avg}kn tijdens lesuren (09–18u). De vlieger heeft te weinig kracht om je van de grond te krijgen. Verwacht theorieavond of vrije dag.`,
+      color: "#64748B",
+    };
+  }
+
+  // Way too much wind: dangerous for beginners
+  if (max > 30 || windGust > 38) {
+    return {
+      status: "cancel",
+      emoji: "🌀",
+      short: "Kans op annulering — wind te hard",
+      reason: `Piekwind van ${max}kn (gusts ${windGust}kn) tijdens lesuren. Veel te gevaarlijk voor beginners. Instructeur beslist 's ochtends — verwacht geen waterles.`,
+      color: "#EF4444",
+    };
+  }
+
+  // Marginal low — could be land training
+  if (avg < 12) {
+    return {
+      status: "marginal",
+      emoji: "🌬️",
+      short: "Onzeker — weinig wind",
+      reason: `Gemiddeld ${avg}kn tijdens lesuren. Grensgebied: mogelijk landtraining, bodydrag zonder board, of de les gaat door met een grote vlieger. Instructeur beslist 's ochtends.`,
+      color: "#F59E0B",
+    };
+  }
+
+  // Marginal high — manageable but guarded for beginners
+  if (max > 24) {
+    return {
+      status: "marginal",
+      emoji: "💨",
+      short: "Stevig — instructeur beslist",
+      reason: `Piekwind ${max}kn ${windDir} tijdens lesuren. Aan de stevige kant voor beginners. Les gaat door maar instructeur kan activiteiten aanpassen. Gusts: ${windGust}kn.`,
+      color: "#F97316",
+    };
+  }
+
+  // Ideal
+  return {
+    status: "go",
+    emoji: "🪁",
+    short: "Goede kitedag!",
+    reason: `Gemiddeld ${avg}kn ${windDir} tijdens lesuren (09–18u) — ideaal voor beginners. Grote kans op een volledige dag op het water. Veel plezier!`,
+    color: "#34D399",
+  };
+}
+
 function windDir(deg) {
   return DIRS[Math.round(deg / 45) % 8];
 }
@@ -66,6 +136,21 @@ function dayLabels(dateStr) {
   return {
     weekday: NL_DAYS[d.getDay()],
     dayMonth: `${d.getDate()}/${d.getMonth() + 1}`,
+  };
+}
+
+// Average + max wind during kiting hours (09:00–18:00) from hourly data
+function parseKitingWind(hourlyTimes, hourlyWind, date) {
+  const vals = [];
+  for (let i = 0; i < hourlyTimes.length; i++) {
+    if (!hourlyTimes[i].startsWith(date)) continue;
+    const h = parseInt(hourlyTimes[i].slice(11, 13));
+    if (h >= 9 && h < 19) vals.push(hourlyWind[i] ?? 0);
+  }
+  if (!vals.length) return { avg: 0, max: 0 };
+  return {
+    avg: Math.round(vals.reduce((a, b) => a + b, 0) / vals.length),
+    max: Math.round(Math.max(...vals)),
   };
 }
 
@@ -118,22 +203,26 @@ export function useWeatherForecast() {
 
         const days = d.time.map((date, i) => {
           const { weekday, dayMonth } = dayLabels(date);
+          const kiting = parseKitingWind(h.time, h.wind_speed_10m, date);
           return {
             date,
-            isTripDay: date >= TRIP_START && date <= TRIP_END,
+            isTripDay:     date >= TRIP_START && date <= TRIP_END,
             weekday,
             dayMonth,
-            emoji:       weatherEmoji(d.weathercode[i]),
-            label:       weatherLabel(d.weathercode[i]),
-            tempMax:     Math.round(d.temperature_2m_max[i]),
-            tempMin:     Math.round(d.temperature_2m_min[i]),
-            windKn:      Math.round(d.wind_speed_10m_max[i]),
-            windGust:    Math.round(d.wind_gusts_10m_max[i]),
-            windDir:     windDir(d.wind_direction_10m_dominant[i]),
-            precipProb:  d.precipitation_probability_max[i] ?? 0,
-            precipMm:    Math.round((d.precipitation_sum[i] || 0) * 10) / 10,
-            precipHours: d.precipitation_hours[i] || 0,
-            rainWindows: parseRainWindows(h.time, h.precipitation, date),
+            code:          d.weathercode[i],
+            emoji:         weatherEmoji(d.weathercode[i]),
+            label:         weatherLabel(d.weathercode[i]),
+            tempMax:       Math.round(d.temperature_2m_max[i]),
+            tempMin:       Math.round(d.temperature_2m_min[i]),
+            windKn:        Math.round(d.wind_speed_10m_max[i]),
+            windGust:      Math.round(d.wind_gusts_10m_max[i]),
+            windDir:       windDir(d.wind_direction_10m_dominant[i]),
+            windKitingAvg: kiting.avg,
+            windKitingMax: kiting.max,
+            precipProb:    d.precipitation_probability_max[i] ?? 0,
+            precipMm:      Math.round((d.precipitation_sum[i] || 0) * 10) / 10,
+            precipHours:   d.precipitation_hours[i] || 0,
+            rainWindows:   parseRainWindows(h.time, h.precipitation, date),
           };
         });
 
