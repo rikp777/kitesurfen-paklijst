@@ -173,8 +173,13 @@ function TripOverviewCard({ trip, isActive, onSelect }) {
 
 // ── Main view ────────────────────────────────────────────────────
 
-export default function HomeView() {
+export default function HomeView({ onOpenTrip }) {
   const { trips, activeTrip, setActiveTripId } = useTrip();
+
+  const handleSelect = (id) => {
+    setActiveTripId(id);
+    onOpenTrip();
+  };
 
   return (
     <>
@@ -192,7 +197,7 @@ export default function HomeView() {
             key={trip.id}
             trip={trip}
             isActive={trip.id === activeTrip.id}
-            onSelect={setActiveTripId}
+            onSelect={handleSelect}
           />
         ))}
       </div>

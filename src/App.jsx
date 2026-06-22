@@ -10,6 +10,7 @@ import PageHero from "./components/PageHero";
 import WindWidget from "./components/WindWidget";
 import DaySchedule from "./components/DaySchedule";
 import HomeView from "./views/HomeView";
+import TripDetailView from "./views/TripDetailView";
 import PackingView from "./views/PackingView";
 
 // The map pulls in Leaflet — load it only when the Kaart tab is opened.
@@ -17,6 +18,7 @@ const MapView = lazy(() => import("./components/MapView"));
 
 export default function App() {
   const [tab, setTab] = useState("home");
+  const [tripDetail, setTripDetail] = useState(false);
   const [mapFocus, setMapFocus] = useState(null);
   const { toast, showToast } = useToast();
   const isDesktop = useBreakpoint();
@@ -27,7 +29,12 @@ export default function App() {
   };
 
   function TabContent() {
-    if (tab === "home") return <HomeView />;
+    if (tab === "home") {
+      if (tripDetail) {
+        return <TripDetailView onBack={() => setTripDetail(false)} onNavigate={(t) => { setTab(t); setTripDetail(false); }} />;
+      }
+      return <HomeView onOpenTrip={() => setTripDetail(true)} />;
+    }
 
     if (tab === "pack") return <PackingView showToast={showToast} />;
 
@@ -60,7 +67,7 @@ export default function App() {
     return (
       <div style={{ fontFamily: font, background: colors.bg, minHeight: "100vh", display: "flex" }}>
         <Toast message={toast} />
-        <SideNav active={tab} onChange={setTab} />
+        <SideNav active={tab} onChange={(t) => { setTab(t); if (t !== "home") setTripDetail(false); }} />
         <div style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
           <TabContent />
         </div>
@@ -77,7 +84,7 @@ export default function App() {
     }}>
       <Toast message={toast} />
       <TabContent />
-      <BottomNav active={tab} onChange={setTab} />
+      <BottomNav active={tab} onChange={(t) => { setTab(t); if (t !== "home") setTripDetail(false); }} />
     </div>
   );
 }
