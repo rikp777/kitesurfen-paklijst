@@ -18,6 +18,52 @@ import JournalView from "./views/JournalView";
 
 const MapView = lazy(() => import("./components/MapView"));
 
+// ── Tab content — defined OUTSIDE App so React doesn't remount on every render
+
+function TabContent({ tab, tripDetail, navigate, showToast }) {
+  if (tab === "home") {
+    if (tripDetail) {
+      return (
+        <TripDetailView
+          onBack={() => navigate({ detail: null })}
+          onNavigate={(t) => navigate({ tab: t, detail: null })}
+        />
+      );
+    }
+    return <HomeView onOpenTrip={() => navigate({ detail: "1" })} />;
+  }
+
+  if (tab === "journal") return <JournalView />;
+
+  if (tab === "pack") return <PackingView showToast={showToast} />;
+
+  if (tab === "day") return (
+    <>
+      <PageHero eyebrow="🪁 Ripstar · Denemarken" title="Dagindeling" subtitle="Beginnerscamp aan het Ringkøbing Fjord">
+        <WindWidget />
+      </PageHero>
+      <div className="page-content">
+        <DaySchedule onFocusMap={(id) => navigate({ tab: "map", _focus: id })} />
+      </div>
+    </>
+  );
+
+  if (tab === "map") return (
+    <>
+      <PageHero eyebrow="🪁 Ripstar · West-Jutland" title="Kaart & uitjes" subtitle="Waar het kamp ligt + leuke plekken in de buurt" />
+      <div className="page-content">
+        <Suspense fallback={<p style={{ color: colors.textMuted, textAlign: "center", padding: 40 }}>🗺️ Kaart laden…</p>}>
+          <MapView />
+        </Suspense>
+      </div>
+    </>
+  );
+
+  return null;
+}
+
+// ── App shell ─────────────────────────────────────────────────────
+
 export default function App() {
   const { params, navigate } = useHashNav();
   const { activeTrip } = useTrip();
@@ -27,70 +73,24 @@ export default function App() {
   const tab        = params.get("tab") ?? "home";
   const tripDetail = params.get("detail") === "1";
 
-  // Bootstrap URL on first visit (no hash at all)
+  // Bootstrap: set URL on very first visit (no hash)
   useEffect(() => {
     if (!params.has("tab")) {
       navigate({ tab: "home", detail: "1" }, { replace: true });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Redirect to home if the active trip doesn't support the current tab
+  // Auto-redirect if the active trip doesn't support the current tab
   const allowedTabs = activeTrip.tabs ?? ["home", "journal", "pack", "day", "map"];
   useEffect(() => {
-    if (tab !== "home" && !allowedTabs.includes(tab)) {
+    if (!allowedTabs.includes(tab)) {
       navigate({ tab: "home", detail: "1" }, { replace: true });
     }
   }, [activeTrip.id, tab]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const setTab = (newTab) => navigate({ tab: newTab });
 
-  const handleFocusMap = (locationId) => {
-    navigate({ tab: "map" });
-    // mapFocus is passed via context or prop; for now keep the state local
-    window._mapFocus = locationId;
-  };
-
-  function TabContent() {
-    if (tab === "home") {
-      if (tripDetail) {
-        return (
-          <TripDetailView
-            onBack={() => navigate({ detail: null })}
-            onNavigate={(t) => navigate({ tab: t, detail: null })}
-          />
-        );
-      }
-      return <HomeView onOpenTrip={() => navigate({ detail: "1" })} />;
-    }
-
-    if (tab === "journal") return <JournalView />;
-
-    if (tab === "pack") return <PackingView showToast={showToast} />;
-
-    if (tab === "day") return (
-      <>
-        <PageHero eyebrow="🪁 Ripstar · Denemarken" title="Dagindeling" subtitle="Beginnerscamp aan het Ringkøbing Fjord">
-          <WindWidget />
-        </PageHero>
-        <div className="page-content">
-          <DaySchedule onFocusMap={handleFocusMap} />
-        </div>
-      </>
-    );
-
-    if (tab === "map") return (
-      <>
-        <PageHero eyebrow="🪁 Ripstar · West-Jutland" title="Kaart & uitjes" subtitle="Waar het kamp ligt + leuke plekken in de buurt" />
-        <div className="page-content">
-          <Suspense fallback={<p style={{ color: colors.textMuted, textAlign: "center", padding: 40 }}>🗺️ Kaart laden…</p>}>
-            <MapView focus={window._mapFocus} />
-          </Suspense>
-        </div>
-      </>
-    );
-
-    return null;
-  }
+  const tabProps = { tab, tripDetail, navigate, showToast };
 
   if (isDesktop) {
     return (
@@ -104,7 +104,7 @@ export default function App() {
           onShowOverview={() => navigate({ tab: "home", detail: null })}
         />
         <div style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
-          <TabContent />
+          <TabContent {...tabProps} />
         </div>
       </div>
     );
@@ -118,7 +118,7 @@ export default function App() {
       paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)",
     }}>
       <Toast message={toast} />
-      <TabContent />
+      <TabContent {...tabProps} />
       <BottomNav active={tab} onChange={setTab} />
     </div>
   );

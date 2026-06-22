@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { colors } from "../constants/theme";
 import { journalEntries } from "../data/journal";
 import { trips } from "../data/trips";
