@@ -7,6 +7,7 @@ import BottomNav from "./components/BottomNav";
 import PageHero from "./components/PageHero";
 import WindWidget from "./components/WindWidget";
 import DaySchedule from "./components/DaySchedule";
+import HomeView from "./views/HomeView";
 import PackingView from "./views/PackingView";
 
 // The map pulls in Leaflet — load it only when the Kaart tab is opened.
@@ -19,12 +20,20 @@ const pageWrap = { maxWidth: 480, margin: "-32px auto 0", padding: "0 16px", pos
  * matching view. Each tab is a self-contained view; App stays thin.
  */
 export default function App() {
-  const [tab, setTab] = useState("pack");
+  const [tab, setTab] = useState("home");
+  const [mapFocus, setMapFocus] = useState(null);
   const { toast, showToast } = useToast();
+
+  const handleFocusMap = (locationId) => {
+    setMapFocus(locationId);
+    setTab("map");
+  };
 
   return (
     <div style={{ fontFamily: font, background: colors.bg, minHeight: "100vh", paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 72px)" }}>
       <Toast message={toast} />
+
+      {tab === "home" && <HomeView />}
 
       {tab === "pack" && <PackingView showToast={showToast} />}
 
@@ -34,7 +43,7 @@ export default function App() {
             <WindWidget />
           </PageHero>
           <div style={pageWrap}>
-            <DaySchedule />
+            <DaySchedule onFocusMap={handleFocusMap} />
           </div>
         </>
       )}
@@ -44,7 +53,7 @@ export default function App() {
           <PageHero eyebrow="🪁 Ripstar · West-Jutland" title="Kaart & uitjes" subtitle="Waar het kamp ligt + leuke plekken in de buurt" />
           <div style={pageWrap}>
             <Suspense fallback={<p style={{ color: colors.textMuted, textAlign: "center", padding: 40 }}>🗺️ Kaart laden…</p>}>
-              <MapView />
+              <MapView focus={mapFocus} />
             </Suspense>
           </div>
         </>
