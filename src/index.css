@@ -28,19 +28,16 @@
   }
 }
 
-/* Packing view hero overlaps more */
-.page-content--pack {
-  max-width: 480px;
-  margin: -48px auto 0;
-  padding: 0 16px;
-  position: relative;
-  z-index: 1;
+/* 2-column grid for dashboard cards — stacks on mobile */
+.home-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 14px;
+  margin-bottom: 14px;
 }
 
 @media (min-width: 900px) {
-  .page-content--pack {
-    max-width: 1000px;
-    margin: -48px auto 0;
-    padding: 0 32px;
+  .home-grid-2 {
+    grid-template-columns: 1fr 1fr;
   }
 }
