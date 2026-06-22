@@ -90,6 +90,8 @@ export const categories = [
       { id: "v12", text: "Haarborstel / kam" },
       { id: "v13", text: "Elastieken / haarclips" },
       { id: "v14", text: "Wattenstaafjes + scheerschuim" },
+      { id: "v15", text: "Extra contactlenzen (reserveparen — makkelijk kwijt in zee)" },
+      { id: "v16", text: "Lenzenvloeistof + lenzendoosje" },
     ],
   },
   {
