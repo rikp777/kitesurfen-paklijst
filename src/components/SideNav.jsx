@@ -11,9 +11,19 @@ function formatDateRange(startDate, endDate) {
   return `${s.getDate()} ${months[s.getMonth()]} – ${e.getDate()} ${months[e.getMonth()]} ${s.getFullYear()}`;
 }
 
-export default function SideNav({ active, onChange, onTripSelect }) {
+export default function SideNav({ active, onChange, tripDetailOpen, onTripSelect, onShowOverview }) {
   const { trips, activeTrip, setActiveTripId } = useTrip();
   const today = new Date().toISOString().slice(0, 10);
+
+  const handleTripClick = (trip) => {
+    if (trip.id === activeTrip.id && tripDetailOpen) {
+      // Clicking the already-selected trip while its detail is open → go to overview
+      onShowOverview?.();
+    } else {
+      setActiveTripId(trip.id);
+      onTripSelect?.();
+    }
+  };
 
   return (
     <nav style={{
@@ -28,8 +38,19 @@ export default function SideNav({ active, onChange, onTripSelect }) {
       flexDirection: "column",
       overflowY: "auto",
     }}>
-      {/* Brand */}
-      <div style={{ padding: "24px 20px 18px", borderBottom: `1px solid ${colors.surfaceBorder}` }}>
+      {/* Brand — click goes to overview */}
+      <div
+        onClick={onShowOverview}
+        style={{
+          padding: "24px 20px 18px",
+          borderBottom: `1px solid ${colors.surfaceBorder}`,
+          cursor: "pointer",
+          transition: "opacity 0.15s",
+        }}
+        onMouseEnter={(e) => e.currentTarget.style.opacity = "0.8"}
+        onMouseLeave={(e) => e.currentTarget.style.opacity = "1"}
+        title="Terug naar overzicht"
+      >
         <div style={{ fontSize: 22 }}>🪁</div>
         <div style={{ fontSize: 15, fontWeight: 800, color: "#fff", marginTop: 5, lineHeight: 1.2 }}>
           Kite Trips
@@ -45,22 +66,23 @@ export default function SideNav({ active, onChange, onTripSelect }) {
           Trips
         </div>
         {trips.map((trip) => {
-          const isActive = trip.id === activeTrip.id;
-          const isPast   = trip.endDate < today;
-          const isDuring = today >= trip.startDate && today <= trip.endDate;
+          const isActive  = trip.id === activeTrip.id;
+          const isPast    = trip.endDate < today;
+          const isDuring  = today >= trip.startDate && today <= trip.endDate;
+          const isOpen    = isActive && tripDetailOpen;
 
           let statusDot = null;
-          if (isDuring) statusDot = { color: "#34D399", label: "Nu" };
-          else if (!isPast) statusDot = { color: colors.sky, label: "Aankomend" };
+          if (isDuring)   statusDot = { color: "#34D399" };
+          else if (!isPast) statusDot = { color: colors.sky };
 
           return (
             <button
               key={trip.id}
-              onClick={() => { setActiveTripId(trip.id); onTripSelect?.(); }}
+              onClick={() => handleTripClick(trip)}
               style={{
                 width: "100%",
-                background: isActive ? `${colors.sky}18` : "none",
-                border: isActive ? `1px solid ${colors.sky}33` : "1px solid transparent",
+                background: isOpen ? `${colors.sky}18` : "none",
+                border: isOpen ? `1px solid ${colors.sky}33` : "1px solid transparent",
                 borderRadius: 10,
                 cursor: "pointer",
                 padding: "10px 12px",
@@ -72,22 +94,18 @@ export default function SideNav({ active, onChange, onTripSelect }) {
                 transition: "background 0.15s, border-color 0.15s",
               }}
             >
-              {/* Flag / emoji */}
               <span style={{ fontSize: 20, flexShrink: 0 }}>{trip.flag ?? trip.emoji}</span>
-
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
-                  fontSize: 13, fontWeight: isActive ? 700 : 500,
-                  color: isActive ? colors.accentLight : colors.textBody,
+                  fontSize: 13, fontWeight: isOpen ? 700 : 500,
+                  color: isOpen ? colors.accentLight : colors.textBody,
                   lineHeight: 1.2,
                   display: "flex", alignItems: "center", gap: 5,
                 }}>
                   {trip.name}
-                  {statusDot && (
-                    <span style={{ width: 6, height: 6, borderRadius: 99, background: statusDot.color, flexShrink: 0 }} />
-                  )}
+                  {statusDot && <span style={{ width: 6, height: 6, borderRadius: 99, background: statusDot.color, flexShrink: 0 }} />}
                 </div>
-                <div style={{ fontSize: 10, color: isPast ? colors.textMuted : colors.textMuted, marginTop: 2, lineHeight: 1.3 }}>
+                <div style={{ fontSize: 10, color: colors.textMuted, marginTop: 2, lineHeight: 1.3 }}>
                   {formatDateRange(trip.startDate, trip.endDate)}
                   {isPast && <span style={{ marginLeft: 4, opacity: 0.6 }}>✓</span>}
                 </div>

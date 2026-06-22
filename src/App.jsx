@@ -70,7 +70,9 @@ export default function App() {
         <SideNav
           active={tab}
           onChange={setTab}
+          tripDetailOpen={tripDetail}
           onTripSelect={() => { setTab("home"); setTripDetail(true); }}
+          onShowOverview={() => { setTab("home"); setTripDetail(false); }}
         />
         <div style={{ flex: 1, minWidth: 0, overflowX: "hidden" }}>
           <TabContent />
