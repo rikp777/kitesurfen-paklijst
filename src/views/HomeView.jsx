@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { colors } from "../constants/theme";
 import { useWeatherForecast, sessionVerdict } from "../hooks/useWeatherForecast";
 import { useTrip } from "../context/TripContext";
@@ -5,6 +6,8 @@ import PageHero from "../components/PageHero";
 import WindWidget from "../components/WindWidget";
 
 // ── Helpers ──────────────────────────────────────────────────────
+
+const NL_DAYS = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
 function formatDateRange(startDate, endDate) {
   const s = new Date(startDate + "T12:00:00");
@@ -28,20 +31,38 @@ function useTripPhase(startDate, endDate) {
   return { phase: "after" };
 }
 
+function getTripDates(startDate, endDate) {
+  const dates = [];
+  const cur = new Date(startDate + "T12:00:00");
+  const end = new Date(endDate + "T12:00:00");
+  while (cur <= end) {
+    dates.push(cur.toISOString().slice(0, 10));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return dates;
+}
+
 // ── Trip overview card ───────────────────────────────────────────
 
 function TripOverviewCard({ trip, isActive, onSelect }) {
   const { status, days, isPastTrip } = useWeatherForecast(trip);
   const phase = useTripPhase(trip.startDate, trip.endDate);
-  const tripDays = days.filter((d) => d.isTripDay);
+  const [activeDate, setActiveDate] = useState(null);
 
-  const avgWind = tripDays.length
-    ? Math.round(tripDays.reduce((s, d) => s + (d.windKitingAvg || 0), 0) / tripDays.length) : null;
-  const avgTemp = tripDays.length
-    ? Math.round(tripDays.reduce((s, d) => s + d.tempMax, 0) / tripDays.length) : null;
-  const verdicts   = tripDays.map((d) => sessionVerdict(d));
-  const goodCount  = verdicts.filter((v) => v.status === "go").length;
+  const tripDates = getTripDates(trip.startDate, trip.endDate);
+  const dayMap = Object.fromEntries(
+    days.filter((d) => d.isTripDay).map((d) => [d.date, d])
+  );
+  const tripDaysWithData = tripDates.map((date) => dayMap[date]).filter(Boolean);
+
+  const avgWind = tripDaysWithData.length
+    ? Math.round(tripDaysWithData.reduce((s, d) => s + (d.windKitingAvg || 0), 0) / tripDaysWithData.length) : null;
+  const avgTemp = tripDaysWithData.length
+    ? Math.round(tripDaysWithData.reduce((s, d) => s + d.tempMax, 0) / tripDaysWithData.length) : null;
+  const verdicts    = tripDaysWithData.map((d) => sessionVerdict(d));
+  const goodCount   = verdicts.filter((v) => v.status === "go").length;
   const cancelCount = verdicts.filter((v) => v.status === "cancel").length;
+  const outOfWindow = tripDates.length - tripDaysWithData.length;
 
   let badge;
   if (phase.phase === "during")
@@ -51,7 +72,13 @@ function TripOverviewCard({ trip, isActive, onSelect }) {
   else
     badge = { label: "Afgerond ✓", bg: `${colors.textMuted}18`, color: colors.textMuted };
 
-  const NL = ["Zo","Ma","Di","Wo","Do","Vr","Za"];
+  const handleBubble = (date, e) => {
+    e.stopPropagation();
+    setActiveDate((prev) => (prev === date ? null : date));
+  };
+
+  const activeDay = activeDate ? dayMap[activeDate] : null;
+  const activeDateObj = activeDate ? new Date(activeDate + "T12:00:00") : null;
 
   return (
     <div
@@ -93,72 +120,137 @@ function TripOverviewCard({ trip, isActive, onSelect }) {
         </div>
       )}
 
-      {status === "ready" && tripDays.length === 0 && (
-        <div style={{ padding: "0 14px 12px", fontSize: 12, color: colors.textMuted }}>
-          ❓ Voorspelling nog niet beschikbaar — te ver in de toekomst
-        </div>
-      )}
-
-      {status === "ready" && tripDays.length > 0 && (
+      {status === "ready" && (
         <>
-          {/* Day verdict dots */}
-          <div style={{ display: "flex", gap: 3, padding: "0 14px 8px" }}>
-            {tripDays.map((day) => {
-              const v = sessionVerdict(day);
-              const d = new Date(day.date + "T12:00:00");
+          {/* Day verdict dots — all expected trip days */}
+          <div style={{ display: "flex", gap: 3, padding: "0 14px 4px" }}>
+            {tripDates.map((date) => {
+              const day = dayMap[date];
+              const d = new Date(date + "T12:00:00");
+              const isSelected = activeDate === date;
+
+              if (day) {
+                const v = sessionVerdict(day);
+                return (
+                  <div
+                    key={date}
+                    onClick={(e) => handleBubble(date, e)}
+                    onMouseEnter={() => setActiveDate(date)}
+                    onMouseLeave={() => setActiveDate((prev) => (prev === date ? null : prev))}
+                    style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, cursor: "pointer" }}
+                  >
+                    <div style={{
+                      width: "100%", height: 28, borderRadius: 6,
+                      background: isSelected ? `${v.color}40` : `${v.color}28`,
+                      border: `1px solid ${isSelected ? v.color : `${v.color}50`}`,
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                      fontSize: 13,
+                      transition: "background 0.1s, border-color 0.1s",
+                    }}>
+                      {v.emoji}
+                    </div>
+                    <span style={{ fontSize: 8, color: isSelected ? colors.accentLight : colors.textMuted, fontWeight: 600 }}>
+                      {NL_DAYS[d.getDay()]}
+                    </span>
+                  </div>
+                );
+              }
+
+              // No forecast data yet — outside 16-day window
               return (
-                <div key={day.date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                <div key={date} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
                   <div style={{
                     width: "100%", height: 28, borderRadius: 6,
-                    background: `${v.color}28`, border: `1px solid ${v.color}50`,
+                    background: "rgba(255,255,255,0.04)",
+                    border: "1px dashed rgba(255,255,255,0.12)",
                     display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: 13,
+                    fontSize: 11, color: "rgba(255,255,255,0.2)",
                   }}>
-                    {v.emoji}
+                    ·
                   </div>
-                  <span style={{ fontSize: 8, color: colors.textMuted, fontWeight: 600 }}>
-                    {NL[d.getDay()]}
+                  <span style={{ fontSize: 8, color: colors.textMuted, fontWeight: 600, opacity: 0.4 }}>
+                    {NL_DAYS[d.getDay()]}
                   </span>
                 </div>
               );
             })}
           </div>
 
-          {/* Stats */}
-          <div style={{
-            display: "flex", gap: 20, padding: "8px 14px 12px",
-            borderTop: `1px solid ${colors.surfaceBorder}`,
-            flexWrap: "wrap",
-          }}>
-            {avgWind != null && (
-              <div>
-                <div style={{ fontSize: 10, color: colors.textMuted }}>💨 Gem. wind</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>{avgWind} kn</div>
+          {/* Hover / tap detail panel */}
+          {activeDay && (
+            <div
+              onClick={(e) => e.stopPropagation()}
+              style={{
+                margin: "4px 14px 6px",
+                padding: "9px 11px",
+                background: "rgba(255,255,255,0.04)",
+                borderRadius: 8,
+                border: `1px solid ${sessionVerdict(activeDay).color}50`,
+              }}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
+                <span style={{ fontSize: 12, fontWeight: 700, color: colors.text }}>
+                  {NL_DAYS[activeDateObj.getDay()]} {activeDateObj.getDate()}/{activeDateObj.getMonth() + 1}
+                </span>
+                <span style={{ fontSize: 11, color: colors.textMuted }}>
+                  {activeDay.emoji} {activeDay.label}
+                </span>
               </div>
-            )}
-            {avgTemp != null && (
-              <div>
-                <div style={{ fontSize: 10, color: colors.textMuted }}>🌡️ Gem. max temp</div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>{avgTemp}°C</div>
+              <div style={{ display: "flex", gap: 14, fontSize: 11, color: colors.textMuted, flexWrap: "wrap" }}>
+                <span>💨 {activeDay.windKitingAvg}kn gem. · {activeDay.windKitingMax}kn max ({activeDay.windDir})</span>
+                <span>🌡️ {activeDay.tempMax}°C</span>
+                {activeDay.precipMm > 0 && <span>🌧️ {activeDay.precipMm}mm</span>}
               </div>
-            )}
-            <div>
-              <div style={{ fontSize: 10, color: colors.textMuted }}>
-                🪁 {isPastTrip ? "Goede kitedagen" : "Verwacht goed"}
-              </div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: goodCount > 0 ? "#34D399" : colors.textMuted }}>
-                {goodCount}/{tripDays.length}
+              <div style={{ marginTop: 5, fontSize: 11, fontWeight: 700, color: sessionVerdict(activeDay).color }}>
+                {sessionVerdict(activeDay).short}
               </div>
             </div>
-            {cancelCount > 0 && (
+          )}
+
+          {/* Out-of-window notice */}
+          {outOfWindow > 0 && !activeDay && (
+            <div style={{ padding: "2px 14px 6px", fontSize: 11, color: colors.textMuted, opacity: 0.6 }}>
+              {outOfWindow} dag{outOfWindow > 1 ? "en vallen" : " valt"} nog buiten het 16-daagse voorspellingsvenster
+            </div>
+          )}
+
+          {/* Stats */}
+          {tripDaysWithData.length > 0 && (
+            <div style={{
+              display: "flex", gap: 20, padding: "8px 14px 12px",
+              borderTop: `1px solid ${colors.surfaceBorder}`,
+              flexWrap: "wrap",
+            }}>
+              {avgWind != null && (
+                <div>
+                  <div style={{ fontSize: 10, color: colors.textMuted }}>💨 Gem. wind</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>{avgWind} kn</div>
+                </div>
+              )}
+              {avgTemp != null && (
+                <div>
+                  <div style={{ fontSize: 10, color: colors.textMuted }}>🌡️ Gem. max temp</div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: colors.text }}>{avgTemp}°C</div>
+                </div>
+              )}
               <div>
                 <div style={{ fontSize: 10, color: colors.textMuted }}>
-                  {isPastTrip ? "Geannuleerd" : "Kans op ann."}
+                  🪁 {isPastTrip ? "Goede kitedagen" : "Verwacht goed"}
                 </div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#EF4444" }}>{cancelCount}</div>
+                <div style={{ fontSize: 15, fontWeight: 800, color: goodCount > 0 ? "#34D399" : colors.textMuted }}>
+                  {goodCount}/{tripDaysWithData.length}{outOfWindow > 0 ? ` +${outOfWindow}?` : ""}
+                </div>
               </div>
-            )}
-          </div>
+              {cancelCount > 0 && (
+                <div>
+                  <div style={{ fontSize: 10, color: colors.textMuted }}>
+                    {isPastTrip ? "Geannuleerd" : "Kans op ann."}
+                  </div>
+                  <div style={{ fontSize: 15, fontWeight: 800, color: "#EF4444" }}>{cancelCount}</div>
+                </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
