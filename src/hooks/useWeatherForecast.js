@@ -11,6 +11,8 @@ const DAILY_FORECAST = DAILY + ",precipitation_probability_max";
 const DIRS = ["N", "NO", "O", "ZO", "Z", "ZW", "W", "NW"];
 const NL_DAYS = ["Zo", "Ma", "Di", "Wo", "Do", "Vr", "Za"];
 
+const HOURLY_VARS = "precipitation,wind_speed_10m,temperature_2m";
+
 function buildEndpoint(trip) {
   const today = new Date().toISOString().slice(0, 10);
   const isPast = trip.endDate < today;
@@ -20,14 +22,14 @@ function buildEndpoint(trip) {
   if (isPast) {
     return (
       `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
-      `&daily=${DAILY}&hourly=precipitation,wind_speed_10m` +
+      `&daily=${DAILY}&hourly=${HOURLY_VARS}` +
       `&wind_speed_unit=kn&timezone=${tz}` +
       `&start_date=${trip.startDate}&end_date=${trip.endDate}`
     );
   }
   return (
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&daily=${DAILY_FORECAST}&hourly=precipitation,wind_speed_10m` +
+    `&daily=${DAILY_FORECAST}&hourly=${HOURLY_VARS}` +
     `&wind_speed_unit=kn&timezone=${tz}&forecast_days=16`
   );
 }
@@ -38,13 +40,13 @@ function buildStopEndpoint(stop, isPast) {
   if (isPast) {
     return (
       `https://archive-api.open-meteo.com/v1/archive?latitude=${lat}&longitude=${lon}` +
-      `&daily=${DAILY}&hourly=precipitation,wind_speed_10m` +
+      `&daily=${DAILY}&hourly=${HOURLY_VARS}` +
       `&wind_speed_unit=kn&timezone=${tz}&start_date=${startDate}&end_date=${endDate}`
     );
   }
   return (
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
-    `&daily=${DAILY_FORECAST}&hourly=precipitation,wind_speed_10m` +
+    `&daily=${DAILY_FORECAST}&hourly=${HOURLY_VARS}` +
     `&wind_speed_unit=kn&timezone=${tz}&forecast_days=16`
   );
 }
@@ -76,6 +78,23 @@ function parseDays(json, isPastTrip, startDate, endDate) {
       rainWindows:   parseRainWindows(h.time, h.precipitation, date),
     };
   });
+}
+
+// Returns { "YYYY-MM-DDTHH:00": { temp, precip } } for quick per-slot lookups.
+function parseHourlyData(json) {
+  const map = {};
+  const times   = json.hourly?.time             ?? [];
+  const temps   = json.hourly?.temperature_2m   ?? [];
+  const precips = json.hourly?.precipitation    ?? [];
+  const winds   = json.hourly?.wind_speed_10m   ?? [];
+  for (let i = 0; i < times.length; i++) {
+    map[times[i]] = {
+      temp:   temps[i]   != null ? Math.round(temps[i])             : null,
+      precip: precips[i] != null ? Math.round(precips[i] * 10) / 10 : 0,
+      wind:   winds[i]   != null ? Math.round(winds[i])             : 0,
+    };
+  }
+  return map;
 }
 
 export function weatherEmoji(code) {
@@ -232,7 +251,7 @@ function forecastAvailableFrom(startDate) {
 }
 
 export function useWeatherForecast(trip) {
-  const [state, setState] = useState({ status: "loading", days: [], isPastTrip: false, stopForecasts: null, availableFrom: null });
+  const [state, setState] = useState({ status: "loading", days: [], isPastTrip: false, stopForecasts: null, availableFrom: null, hourlyData: {} });
 
   useEffect(() => {
     if (!trip) return;
@@ -247,7 +266,7 @@ export function useWeatherForecast(trip) {
     if (!isPastTrip && trip.startDate > windowEndStr) {
       setState({
         status: "too-early", days: [], isPastTrip: false, stopForecasts: null,
-        availableFrom: forecastAvailableFrom(trip.startDate),
+        availableFrom: forecastAvailableFrom(trip.startDate), hourlyData: {},
       });
       return;
     }
@@ -263,15 +282,16 @@ export function useWeatherForecast(trip) {
             .then((json) => {
               const all = parseDays(json, isPastStop, stop.startDate, stop.endDate);
               const days = all.filter((d) => d.date >= stop.startDate && d.date <= stop.endDate);
-              return { stop, days, status: "ready" };
+              return { stop, days, hourlyData: parseHourlyData(json), status: "ready" };
             })
-            .catch(() => ({ stop, days: [], status: "error" }));
+            .catch(() => ({ stop, days: [], hourlyData: {}, status: "error" }));
         })
       ).then((stopForecasts) => {
         if (!active) return;
         const days = stopForecasts.flatMap((sf) => sf.days);
+        const hourlyData = Object.assign({}, ...stopForecasts.map((sf) => sf.hourlyData));
         const anyReady = stopForecasts.some((sf) => sf.days.length > 0);
-        setState({ status: anyReady ? "ready" : "error", days, isPastTrip, stopForecasts });
+        setState({ status: anyReady ? "ready" : "error", days, isPastTrip, stopForecasts, hourlyData });
       });
     } else {
       fetch(buildEndpoint(trip))
@@ -279,9 +299,10 @@ export function useWeatherForecast(trip) {
         .then((json) => {
           if (!active) return;
           const days = parseDays(json, isPastTrip, trip.startDate, trip.endDate);
-          setState({ status: "ready", days, isPastTrip, stopForecasts: null });
+          const hourlyData = parseHourlyData(json);
+          setState({ status: "ready", days, isPastTrip, stopForecasts: null, hourlyData });
         })
-        .catch(() => active && setState({ status: "error", days: [], isPastTrip, stopForecasts: null }));
+        .catch(() => active && setState({ status: "error", days: [], isPastTrip, stopForecasts: null, hourlyData: {} }));
     }
 
     return () => { active = false; };

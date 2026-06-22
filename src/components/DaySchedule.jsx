@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { colors } from "../constants/theme";
 import { days as dkDays, scheduleTypeColor as dkTypeColor } from "../data/schedule";
 import { days as rtDays, scheduleTypeColor as rtTypeColor } from "../data/schedule-roadtrip-2026";
@@ -6,6 +6,7 @@ import { locations as dkLocations, locationCategories as dkCategories } from "..
 import { locations as rtLocations, roadtripCategories as rtCategories } from "../data/locations-roadtrip-2026";
 import { useTrip } from "../context/TripContext";
 import { useJournal } from "../hooks/useJournal";
+import { useWeatherForecast } from "../hooks/useWeatherForecast";
 
 // ── Helpers ──────────────────────────────────────────────────────
 
@@ -61,6 +62,212 @@ function NowSeparator({ nowMin, nextSlotMin }) {
           Volgende over {formatRelTime(until)} →
         </span>
       </div>
+    </div>
+  );
+}
+
+// ── Tiny rain sparkline — half-hour bars, shown under the mm badge ─
+
+function TinyRainBars({ bars, maxP, startH }) {
+  const numHours = bars.length / 2;
+  return (
+    <div>
+      <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
+        {bars.map((p, i) => (
+          <div key={i} style={{
+            width: 3, flexShrink: 0,
+            height: p >= 0.1 ? `${Math.max(25, (p / maxP) * 100)}%` : 0,
+            background: p >= 2 ? "#3B82F6" : p >= 0.5 ? "#60A5FA" : "#93C5FD",
+            borderRadius: "1px 1px 0 0",
+          }} />
+        ))}
+      </div>
+      <div style={{ display: "flex", gap: 1, marginTop: 1 }}>
+        {Array.from({ length: numHours }, (_, i) => (
+          <div key={i} style={{
+            width: 7, flexShrink: 0, textAlign: "center",
+            fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.55,
+          }}>
+            {startH + i}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TinyWindBars({ bars, maxP }) {
+  return (
+    <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
+      {bars.map((w, i) => (
+        <div key={i} style={{
+          width: 3, flexShrink: 0,
+          height: w > 0 ? `${Math.max(15, (w / maxP) * 100)}%` : 0,
+          background: w >= 25 ? "#F97316" : w >= 15 ? "#34D399" : w >= 8 ? "#6EE7B7" : "#4B5563",
+          borderRadius: "1px 1px 0 0",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function TinyTempBars({ bars }) {
+  const tempColor = (t) =>
+    t >= 30 ? "#EF4444" : t >= 22 ? "#F97316" : t >= 16 ? "#FCD34D" : t >= 8 ? "#6EE7B7" : "#93C5FD";
+  return (
+    <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
+      {bars.map((t, i) => (
+        <div key={i} style={{
+          width: 3, flexShrink: 0,
+          height: t != null ? `${Math.max(15, (Math.max(0, t) / 35) * 100)}%` : 0,
+          background: t != null ? tempColor(t) : "transparent",
+          borderRadius: "1px 1px 0 0",
+        }} />
+      ))}
+    </div>
+  );
+}
+
+function slotWeatherInfo(date, startTime, endTime, hourlyData) {
+  const startH = parseInt(startTime.slice(0, 2));
+  const rawEnd = endTime ? parseInt(endTime.slice(0, 2)) : startH + 2;
+  const endH = Math.min(Math.max(rawEnd, startH + 1), startH + 8, 24);
+  const buckets = [];
+  for (let h = startH; h < endH; h++) {
+    const key = `${date}T${String(h).padStart(2, "0")}:00`;
+    const d = hourlyData?.[key];
+    buckets.push({ precip: d?.precip ?? 0, wind: d?.wind ?? 0, temp: d?.temp ?? null });
+  }
+  const totalMm = Math.round(buckets.reduce((s, b) => s + b.precip, 0) * 10) / 10;
+  const rainBars = buckets.flatMap((b) => [b.precip, b.precip]);
+  const windBars = buckets.flatMap((b) => [b.wind, b.wind]);
+  const tempBars = buckets.flatMap((b) => [b.temp, b.temp]);
+  return {
+    totalMm, bars: rainBars, maxP: Math.max(...rainBars, 0.5), startH,
+    hasRain: totalMm >= 0.1,
+    windBars, maxWind: Math.max(...windBars, 15),
+    hasWind: buckets.some((b) => b.wind > 0),
+    tempBars, hasTemp: buckets.some((b) => b.temp != null),
+  };
+}
+
+// ── Day weather strip ─────────────────────────────────────────────
+
+const NL_MONTHS = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+function fmtDate(iso) {
+  const d = new Date(iso + "T12:00:00");
+  return `${d.getDate()} ${NL_MONTHS[d.getMonth()]}`;
+}
+
+function DaySparklines({ date, hourlyData }) {
+  const hours = Array.from({ length: 24 }, (_, h) => {
+    const key = `${date}T${String(h).padStart(2, "0")}:00`;
+    const d = hourlyData?.[key];
+    return { h, precip: d?.precip ?? 0, wind: d?.wind ?? 0, temp: d?.temp ?? null };
+  });
+
+  const anyRain = hours.some((h) => h.precip >= 0.1);
+  const anyWind = hours.some((h) => h.wind > 0);
+  const temps = hours.map((h) => h.temp).filter((t) => t != null);
+  const anyTemp = temps.length > 0;
+  if (!anyRain && !anyWind && !anyTemp) return null;
+
+  const maxRain = Math.max(...hours.map((h) => h.precip), 0.5);
+  const maxWind = Math.max(...hours.map((h) => h.wind), 15);
+  const minTemp = Math.min(...temps);
+  const maxTemp = Math.max(...temps);
+  const tempRange = Math.max(maxTemp - minTemp, 1);
+
+  const windColor = (w) =>
+    w >= 25 ? "#F97316" : w >= 15 ? "#34D399" : w >= 8 ? "#6EE7B7" : `${colors.surfaceBorder}60`;
+  const tempColor = (t) =>
+    t >= 30 ? "#EF4444" : t >= 22 ? "#F97316" : t >= 16 ? "#FCD34D" : t >= 8 ? "#6EE7B7" : "#93C5FD";
+
+  const barRow = (emoji, bars) => (
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 4, marginBottom: 3 }}>
+      <span style={{ fontSize: 9, lineHeight: 1, width: 12, flexShrink: 0 }}>{emoji}</span>
+      <div style={{ display: "flex", gap: 1, height: 6, alignItems: "flex-end" }}>
+        {bars}
+      </div>
+    </div>
+  );
+
+  const hourLabels = (
+    <div style={{ display: "flex", justifyContent: "space-between", width: 95, marginTop: 1, paddingLeft: 16 }}>
+      {[0, 6, 12, 18].map((h) => (
+        <span key={h} style={{ fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.5 }}>{h}</span>
+      ))}
+    </div>
+  );
+
+  return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.surfaceBorder}` }}>
+      {anyTemp && barRow("🌡", hours.map(({ h, temp }) => (
+        <div key={h} style={{
+          width: 3, flexShrink: 0,
+          height: temp != null ? `${Math.max(15, ((temp - minTemp) / tempRange) * 100)}%` : 0,
+          background: temp != null ? tempColor(temp) : "transparent",
+          borderRadius: "1px 1px 0 0",
+        }} />
+      )))}
+      {anyRain && barRow("💧", hours.map(({ h, precip }) => (
+        <div key={h} style={{
+          width: 3, flexShrink: 0,
+          height: precip >= 0.1 ? `${Math.max(25, (precip / maxRain) * 100)}%` : "1px",
+          background: precip >= 0.1
+            ? (precip >= 2 ? "#3B82F6" : precip >= 0.5 ? "#60A5FA" : "#93C5FD")
+            : `${colors.surfaceBorder}20`,
+          borderRadius: "1px 1px 0 0",
+        }} />
+      )))}
+      {anyWind && barRow("💨", hours.map(({ h, wind }) => (
+        <div key={h} style={{
+          width: 3, flexShrink: 0,
+          height: wind > 0 ? `${Math.max(15, (wind / maxWind) * 100)}%` : 0,
+          background: windColor(wind),
+          borderRadius: "1px 1px 0 0",
+        }} />
+      )))}
+      {hourLabels}
+    </div>
+  );
+}
+
+function DayWeather({ date, wxStatus, wxDays, availableFrom }) {
+  if (wxStatus === "loading") return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.surfaceBorder}`, fontSize: 11, color: colors.textMuted }}>
+      🌤 Weerdata laden…
+    </div>
+  );
+
+  if (wxStatus === "too-early") return (
+    <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.surfaceBorder}`, fontSize: 11, color: colors.textMuted }}>
+      📅 Weerdata beschikbaar vanaf {availableFrom ? fmtDate(availableFrom) : "…"}
+    </div>
+  );
+
+  const wx = (wxDays ?? []).find((d) => d.date === date);
+  if (!wx) return null;
+
+  const rainColor = wx.precipProb >= 60 ? "#60A5FA" : wx.precipProb >= 30 ? "#93C5FD" : colors.textMuted;
+
+  return (
+    <div style={{
+      marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.surfaceBorder}`,
+      display: "flex", flexWrap: "wrap", gap: "6px 14px", alignItems: "center",
+    }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: colors.text }}>
+        {wx.emoji} {wx.label}
+      </span>
+      <span style={{ fontSize: 12, color: colors.textMuted }}>
+        🌡 {wx.tempMax}° / {wx.tempMin}°
+      </span>
+      <span style={{ fontSize: 12, color: colors.textMuted }}>
+        💨 {wx.windKn} kn {wx.windDir}
+      </span>
+      <span style={{ fontSize: 12, color: wx.precipProb >= 40 ? rainColor : colors.textMuted }}>
+        🌧 {wx.precipProb}%{wx.precipMm > 0 ? ` · ${wx.precipMm}mm` : ""}
+      </span>
     </div>
   );
 }
@@ -129,13 +336,32 @@ function DayJournal({ date }) {
 
 // ── Main component ────────────────────────────────────────────────
 
-export default function DaySchedule({ onFocusMap }) {
+export default function DaySchedule({ onFocusMap, onFocusPack }) {
   const { activeTrip } = useTrip();
   const isRoadtrip = activeTrip?.id === "europe-roadtrip-2026";
   const days              = isRoadtrip ? rtDays     : dkDays;
   const scheduleTypeColor = isRoadtrip ? rtTypeColor : dkTypeColor;
   const locations         = isRoadtrip ? rtLocations : dkLocations;
   const locationCategories = isRoadtrip ? rtCategories : dkCategories;
+
+  const { status: wxStatus, days: wxDays, availableFrom, hourlyData } = useWeatherForecast(activeTrip);
+
+  // For each slot, look up the hourly weather at the slot's date+hour
+  function slotHourly(date, timeStr) {
+    const hour = timeStr.slice(0, 2);
+    return hourlyData?.[`${date}T${hour}:00`] ?? null;
+  }
+
+  // Build item-id → {text, catColor, catEmoji} lookup from the active trip's packing list
+  const packMap = useMemo(() => {
+    const map = {};
+    (activeTrip?.packingCategories ?? []).forEach((cat) => {
+      cat.items.forEach((item) => {
+        map[item.id] = { text: item.text, catColor: cat.color, catEmoji: cat.emoji };
+      });
+    });
+    return map;
+  }, [activeTrip?.packingCategories]);
 
   const todayISO = new Date().toISOString().slice(0, 10);
   const todayIdx = days.findIndex((d) => d.date === todayISO);
@@ -182,7 +408,8 @@ export default function DaySchedule({ onFocusMap }) {
                      : i < activeIdx     ? "past"
                      : i === activeIdx   ? "active"
                      :                    "upcoming";
-    renderItems.push({ type: "slot", slot, i, slotStatus, isLast: i === day.slots.length - 1 });
+    const endTime = day.slots[i + 1]?.time ?? null;
+    renderItems.push({ type: "slot", slot, i, slotStatus, isLast: i === day.slots.length - 1, endTime });
     if (isLiveDay && i === activeIdx && i < day.slots.length - 1) {
       renderItems.push({ type: "now", nextSlotMin: parseMin(day.slots[i + 1].time) });
     }
@@ -217,10 +444,10 @@ export default function DaySchedule({ onFocusMap }) {
                 </span>
               )}
               <div style={{ fontSize: 20, marginBottom: 2 }}>{d.emoji}</div>
-              <div style={{ fontSize: 10, fontWeight: 700, color: selected ? colors.sky : colors.textBody }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: selected ? colors.text : colors.textBody }}>
                 {d.short}
               </div>
-              <div style={{ fontSize: 9, color: selected ? colors.sky : colors.textMuted, marginTop: 1, lineHeight: 1.3 }}>
+              <div style={{ fontSize: 9, color: selected ? colors.textMuted : colors.textMuted, marginTop: 1, lineHeight: 1.3 }}>
                 {d.title}
               </div>
             </button>
@@ -237,6 +464,8 @@ export default function DaySchedule({ onFocusMap }) {
           {day.emoji} {day.short} — {day.title}
         </div>
         <div style={{ color: colors.textMuted, fontSize: 13, lineHeight: 1.5 }}>{day.note}</div>
+        <DayWeather date={day.date} wxStatus={wxStatus} wxDays={wxDays} availableFrom={availableFrom} />
+        <DaySparklines date={day.date} hourlyData={hourlyData} />
       </div>
 
       {/* ── Journal ──────────────────────────────────────────────── */}
@@ -254,7 +483,7 @@ export default function DaySchedule({ onFocusMap }) {
           }
 
           // ── Slot ───────────────────────────────────────────────
-          const { slot, slotStatus, isLast } = item;
+          const { slot, slotStatus, isLast, endTime } = item;
           const isPast   = slotStatus === "past";
           const isActive = slotStatus === "active";
           const accent   = scheduleTypeColor[slot.type] || colors.sky;
@@ -302,7 +531,7 @@ export default function DaySchedule({ onFocusMap }) {
                 padding: "10px 14px",
                 marginBottom: 12,
               }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                   <div style={{ color: colors.text, fontWeight: 700, fontSize: 14, flex: 1 }}>
                     {slot.title}
                   </div>
@@ -311,10 +540,47 @@ export default function DaySchedule({ onFocusMap }) {
                       fontSize: 9, fontWeight: 800, color: accent,
                       background: `${accent}20`, borderRadius: 8,
                       padding: "2px 7px", whiteSpace: "nowrap", letterSpacing: "0.03em",
+                      flexShrink: 0,
                     }}>
                       ▶ NU
                     </span>
                   )}
+                  {(() => {
+                    const h = slotHourly(day.date, slot.time);
+                    const wx = wxDays?.find((d) => d.date === day.date);
+                    if (!h || h.temp == null || !wx) return null;
+                    const wx2 = slotWeatherInfo(day.date, slot.time, endTime, hourlyData);
+                    return (
+                      <div style={{
+                        display: "flex", flexDirection: "column", alignItems: "flex-end",
+                        gap: 2, flexShrink: 0,
+                      }}>
+                        <span style={{ fontSize: 11, color: colors.textMuted, whiteSpace: "nowrap" }}>
+                          {wx.emoji} {h.temp}°
+                        </span>
+                        {wx2.hasTemp && (
+                          <div style={{ display: "flex", alignItems: "flex-end", gap: 3 }}>
+                            <span style={{ fontSize: 9, lineHeight: 1, opacity: 0.8 }}>🌡</span>
+                            <TinyTempBars bars={wx2.tempBars} />
+                          </div>
+                        )}
+                        {wx2.hasRain && (
+                          <>
+                            <span style={{ fontSize: 10, color: "#60A5FA", fontWeight: 700, lineHeight: 1 }}>
+                              💧 {wx2.totalMm}mm
+                            </span>
+                            <TinyRainBars bars={wx2.bars} maxP={wx2.maxP} startH={wx2.startH} />
+                          </>
+                        )}
+                        {wx2.hasWind && (
+                          <div style={{ display: "flex", alignItems: "flex-end", gap: 3 }}>
+                            <span style={{ fontSize: 9, lineHeight: 1, opacity: 0.8 }}>💨</span>
+                            <TinyWindBars bars={wx2.windBars} maxP={wx2.maxWind} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })()}
                 </div>
                 <div style={{ color: colors.textMuted, fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>
                   {slot.desc}
@@ -331,6 +597,36 @@ export default function DaySchedule({ onFocusMap }) {
                   >
                     📍 {linkedLoc.emoji} {linkedLoc.name}
                   </button>
+                )}
+                {!isPast && (slot.gear ?? []).length > 0 && (
+                  <div style={{ marginTop: 9, display: "flex", flexWrap: "wrap", gap: 5, alignItems: "center" }}>
+                    {(slot.gear ?? []).map((id) => {
+                      const item = packMap[id];
+                      if (!item) return null;
+                      return (
+                        <span key={id} style={{
+                          display: "inline-flex", alignItems: "center", gap: 3,
+                          background: `${item.catColor}18`,
+                          border: `1px solid ${item.catColor}38`,
+                          borderRadius: 8, padding: "2px 7px",
+                          fontSize: 10.5, color: colors.textMuted,
+                          maxWidth: 170, overflow: "hidden",
+                          textOverflow: "ellipsis", whiteSpace: "nowrap",
+                        }}>
+                          {item.catEmoji} {item.text}
+                        </span>
+                      );
+                    })}
+                    {onFocusPack && (
+                      <button onClick={onFocusPack} style={{
+                        background: "none", border: "none",
+                        color: colors.sky, fontSize: 10.5, fontWeight: 700,
+                        cursor: "pointer", padding: "2px 4px",
+                      }}>
+                        🎒 paklijst →
+                      </button>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

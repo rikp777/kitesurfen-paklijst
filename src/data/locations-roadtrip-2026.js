@@ -181,6 +181,16 @@ export const locations = [
     desc: "Gondel vanaf Mühlbach am Hochkönig naar boven. Boven liggen Alpine weiden, een houten kugelracebaan (langste van de Alpen) en meerdere berghutten voor maaltijden.",
   }),
 
+  make({
+    id: "hochkonig-trailhead",
+    name: "Arthurhaus parkeerplaats (1502m)",
+    emoji: "🅿️",
+    category: "nature",
+    lat: 47.4508, lon: 13.0689,
+    stop: "Dienten",
+    desc: "Startpunt voor de Hochkönig wandelingen. Parkeerplaats bij het Arthurhaus (~20 min rijden van Dienten via Mühlbach am Hochkönig). Van hier loopt het pad omhoog naar de Übergossene Alm en de Hochkönig top (2941m).",
+  }),
+
   // ── Kutná Hora – Bezienswaardigheden ─────────────────────────────
 
   make({

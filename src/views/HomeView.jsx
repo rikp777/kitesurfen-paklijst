@@ -88,7 +88,7 @@ function CountdownStrip({ targetDate, label, color }) {
           <span style={{ fontSize: 10, color: colors.textMuted, fontWeight: 600, marginLeft: 2 }}>{unit}</span>
         </span>
       ))}
-      <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 700, color }}>{label}</span>
+      <span style={{ marginLeft: "auto", fontSize: 10, fontWeight: 600, color: colors.textMuted }}>{label}</span>
     </div>
   );
 }
@@ -157,10 +157,10 @@ function TripOverviewCard({ trip, isActive, onSelect }) {
         </span>
         <div style={{ flex: 1, minWidth: 0 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{ fontSize: 14, fontWeight: 800, color: isActive ? colors.sky : colors.text }}>
+            <span style={{ fontSize: 14, fontWeight: 800, color: colors.text }}>
               {trip.name}
             </span>
-            <span style={{ fontSize: 10, fontWeight: 700, background: badge.bg, color: badge.color, borderRadius: 20, padding: "2px 8px" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, background: badge.bg, color: colors.text, borderRadius: 20, padding: "2px 8px" }}>
               {badge.label}
             </span>
           </div>

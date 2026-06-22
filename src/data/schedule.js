@@ -14,8 +14,8 @@ export const scheduleTypeColor = {
   travel:  "#94A3B8",
 };
 
-const s = (id, time, emoji, title, desc, type, locationId = null) => ({
-  id, time, emoji, title, desc, type, locationId,
+const s = (id, time, emoji, title, desc, type, locationId = null, gear = []) => ({
+  id, time, emoji, title, desc, type, locationId, gear,
 });
 
 export const days = [
@@ -28,7 +28,7 @@ export const days = [
     emoji: "🚗",
     note: "~780 km · ca. 8 uur rijden vanuit Utrecht. Navigeer naar: Skavenvej 32, 6880 Tarm, DK. Check bandenspanning voor vertrek!",
     slots: [
-      s("d0s1", "07:00", "🚗", "Vertrek Nederland", "Auto laden en op weg! Koffie voor onderweg en bandenspanning gecheckt?", "travel"),
+      s("d0s1", "07:00", "🚗", "Vertrek Nederland", "Auto laden en op weg! Koffie voor onderweg en bandenspanning gecheckt?", "travel", null, ["d1", "d2", "a1", "a2", "a4"]),
       s("d0s2", "09:30", "⛽", "Tankstop Duitsland", "Benzine bijvullen richting Hamburg — een stuk goedkoper dan in Denemarken.", "travel"),
       s("d0s3", "11:00", "🌉", "Grens Denemarken", "Welkom in DK bij Kruså/Flensburg. Tijdzone is gelijk. Let op nieuwe snelheidslimieten!", "travel"),
       s("d0s4", "12:30", "🍔", "Lunch stop — Jutland", "Pauzeren in Kolding of Vejle. Nog ~130 km en ~1,5 uur rijden.", "food"),
@@ -50,8 +50,8 @@ export const days = [
     slots: [
       s("d1s1", "08:00", "🍳", "Ontbijt", "Uitgebreid ontbijt aan de bar. Check de wind-widget voor de voorspelling vandaag!", "food", "camp"),
       s("d1s2", "09:30", "📋", "Kick-off briefing", "Groepsintro, programma van de week, veiligheidsregels en materiaaluitleg.", "kite", "camp"),
-      s("d1s3", "10:30", "💨", "Kite setup & safety", "Lines uitleggen, safety release oefenen en het windvenster begrijpen.", "kite", "fjord"),
-      s("d1s4", "11:30", "🪁", "Eerste kite in de lucht!", "Land-kite control: sturen, poweren en de powerzone voelen. Dit is het fundament.", "kite", "fjord"),
+      s("d1s3", "10:30", "💨", "Kite setup & safety", "Lines uitleggen, safety release oefenen en het windvenster begrijpen.", "kite", "fjord", ["k4", "k5", "k7", "k10", "v1"]),
+      s("d1s4", "11:30", "🪁", "Eerste kite in de lucht!", "Land-kite control: sturen, poweren en de powerzone voelen. Dit is het fundament.", "kite", "fjord", ["k3", "k4", "k5", "k13", "s1", "s12"]),
       s("d1s5", "13:00", "🥪", "Lunch", "Bijtanken bij het kamp.", "food", "camp"),
       s("d1s6", "14:00", "🪁", "Middag: kite control", "Turns, depoweren en kite stabiliseren. Bodypositie en bar-gevoel opbouwen.", "kite", "fjord"),
       s("d1s7", "17:00", "🧘", "Yoga of zwembad", "Optionele yoga-sessie of afkoelen in het buitenzwembad.", "rest", "camp"),
@@ -73,7 +73,7 @@ export const days = [
       s("d2s2", "09:30", "📋", "Briefing", "Plan voor de dag: kite control verfijnen en dan het water in.", "kite", "camp"),
       s("d2s3", "10:00", "🪁", "Sessie 1: kite control", "Kite perfectioneren, bar-handling en relaunch vanuit het water oefenen.", "kite", "fjord"),
       s("d2s4", "12:30", "🥪", "Lunch", "Bijtanken.", "food", "camp"),
-      s("d2s5", "13:30", "🌊", "Sessie 2: bodydrag!", "Eerste keer het koude fjordwater in! De kite sleept jou — voelt geweldig.", "kite", "fjord"),
+      s("d2s5", "13:30", "🌊", "Sessie 2: bodydrag!", "Eerste keer het koude fjordwater in! De kite sleept jou — voelt geweldig.", "kite", "fjord", ["k4", "k5", "k7", "k8", "k11", "w1", "w4", "s1"]),
       s("d2s6", "17:00", "🔥", "Sauna", "Lekker opwarmen na het koude fjordwater. Goed verdiend.", "rest", "camp"),
       s("d2s7", "19:00", "🍽️", "Diner", "Avondeten met de groep.", "food", "camp"),
       s("d2s8", "20:30", "✨", "Borrel & kampvuur", "Relaxen na een drukke dag op het water.", "evening", "camp"),
@@ -93,7 +93,7 @@ export const days = [
       s("d3s2", "09:30", "📋", "Briefing: waterstart", "Theorie: lichaamspositie, board-feeling en edging uitgelegd.", "kite", "camp"),
       s("d3s3", "10:00", "🌊", "Sessie 1: bodydrag + board", "Board vasthouden tijdens bodydrag, boardgevoel opbouwen.", "kite", "fjord"),
       s("d3s4", "12:30", "🥪", "Lunch", "Bijtanken.", "food", "camp"),
-      s("d3s5", "13:30", "🌊", "Sessie 2: waterstart!", "Eerste pogingen om overeind te komen op het board. Veel vallen = veel leren!", "kite", "fjord"),
+      s("d3s5", "13:30", "🌊", "Sessie 2: waterstart!", "Eerste pogingen om overeind te komen op het board. Veel vallen = veel leren!", "kite", "fjord", ["k4", "k5", "k7", "k8", "k11", "w1", "s6", "s9"]),
       s("d3s6", "17:00", "🧘", "Yoga-sessie", "Optionele yoga voor herstel en balans.", "rest", "camp"),
       s("d3s7", "19:00", "🍽️", "Diner", "Avondeten.", "food", "camp"),
       s("d3s8", "20:30", "🏘️", "Optioneel: avonduitje Ringkøbing", "Gezellig avondtripje naar het stadje — terrasje, ijs en steegjes.", "evening", "ringkobing"),
@@ -111,10 +111,10 @@ export const days = [
     slots: [
       s("d4s1", "08:00", "🍳", "Ontbijt + windcheck", "Goede wind: volle bak lessen. Weinig wind: leuk uitje gepland.", "food", "camp"),
       s("d4s2", "09:30", "📋", "Briefing", "Analyse van gisteren. Persoonlijke doelen voor vandaag.", "kite", "camp"),
-      s("d4s3", "10:00", "🌊", "Sessie 1: waterstart", "Focus op consistente waterstarts en eerste meters rijden!", "kite", "fjord"),
+      s("d4s3", "10:00", "🌊", "Sessie 1: waterstart", "Focus op consistente waterstarts en eerste meters rijden!", "kite", "fjord", ["k4", "k5", "k7", "k8", "k11", "w1", "s6", "s9"]),
       s("d4s4", "12:30", "🥪", "Lunch", "Bijtanken.", "food", "camp"),
       s("d4s5", "13:30", "🏄", "Vrije middag / kabelpark", "SUP, slackline of een uitje naar het kabelpark als afwisseling.", "free", "kabelpark"),
-      s("d4s6", "15:30", "🌊", "Sessie 2 (indien wind)", "Extra watersessie als de wind het toelaat.", "kite", "fjord"),
+      s("d4s6", "15:30", "🌊", "Sessie 2 (indien wind)", "Extra watersessie als de wind het toelaat.", "kite", "fjord", ["k4", "k5", "k7", "k8", "k11", "w1", "s6"]),
       s("d4s7", "17:30", "🔥", "Sauna", "Goed verdiend!", "rest", "camp"),
       s("d4s8", "19:00", "🍽️", "Diner", "Avondeten.", "food", "camp"),
       s("d4s9", "20:30", "🐟", "Optioneel: Hvide Sande", "Avondwandeling naar het vissersstadtje. Verse vis & friet bij de haven.", "evening", "hvide_sande"),
@@ -132,9 +132,9 @@ export const days = [
     slots: [
       s("d5s1", "08:00", "🍳", "Ontbijt", "Uitgebreid ontbijt.", "food", "camp"),
       s("d5s2", "09:30", "📋", "Briefing", "Persoonlijke doelen voor vandaag stellen.", "kite", "camp"),
-      s("d5s3", "10:00", "🪁", "Sessie 1: free ride", "Zelfstandig rijden of specifieke skills met de instructeur.", "kite", "fjord"),
+      s("d5s3", "10:00", "🪁", "Sessie 1: free ride", "Zelfstandig rijden of specifieke skills met de instructeur.", "kite", "fjord", ["k4", "k5", "k7", "k10", "w1", "s6", "s9", "s12"]),
       s("d5s4", "12:30", "🥪", "Lunch", "Bijtanken.", "food", "camp"),
-      s("d5s5", "13:30", "🌊", "Sessie 2: techniek", "Edging, snelheid controleren, richtingverandering. Voortgang vastleggen.", "kite", "fjord"),
+      s("d5s5", "13:30", "🌊", "Sessie 2: techniek", "Edging, snelheid controleren, richtingverandering. Voortgang vastleggen.", "kite", "fjord", ["k4", "k5", "k7", "k10", "w1", "s6", "s4"]),
       s("d5s6", "15:30", "⛵", "Optioneel: Bork Havn", "Verken de kitespot in de zuidhoek én de Viking haven — mooie combinatie.", "free", "bork"),
       s("d5s7", "19:00", "🍽️", "Diner", "Avondeten.", "food", "camp"),
       s("d5s8", "20:30", "📚", "Theorie: wind & apps", "Windguru, Windy, Open-Meteo — leer zelf de beste momenten te spotten.", "evening", "camp"),
@@ -152,9 +152,9 @@ export const days = [
     slots: [
       s("d6s1", "08:00", "🍳", "Ontbijt", "Uitgebreid ontbijt. Morgen vroeg weg dus geniet van vandaag.", "food", "camp"),
       s("d6s2", "09:30", "📋", "Briefing", "Laatste kans voor begeleide sessies — wat wil je nog oefenen?", "kite", "camp"),
-      s("d6s3", "10:00", "🪁", "Sessie 1: laatste les", "Alles geven op het fjord.", "kite", "fjord"),
+      s("d6s3", "10:00", "🪁", "Sessie 1: laatste les", "Alles geven op het fjord.", "kite", "fjord", ["k4", "k5", "k7", "k10", "k13", "w1", "s6", "s9", "v1"]),
       s("d6s4", "12:30", "🥪", "Lunch", "Bijtanken.", "food", "camp"),
-      s("d6s5", "13:30", "🌊", "Sessie 2: free ride", "Geniet van de laatste uren op het water.", "kite", "fjord"),
+      s("d6s5", "13:30", "🌊", "Sessie 2: free ride", "Geniet van de laatste uren op het water.", "kite", "fjord", ["k4", "k5", "k7", "k10", "w1", "s6", "s4", "s12"]),
       s("d6s6", "16:00", "🧘", "Yoga & sauna", "Afsluiten met een yoga-sessie en de sauna.", "rest", "camp"),
       s("d6s7", "19:00", "🍽️", "Afscheidsavond 🎉", "Speciaal afscheidsdiner. Herinneringen ophalen en namen uitwisselen!", "food", "camp"),
       s("d6s8", "21:00", "🔥", "Laatste kampvuur", "Afscheid van medekiters onder de Deense sterren.", "evening", "camp"),
@@ -173,7 +173,7 @@ export const days = [
       s("d7s1", "07:00", "🍳", "Vroeg ontbijt", "Vroeg opstaan voor de terugreis. Snel maar goed ontbijt aan de bar.", "food", "camp"),
       s("d7s2", "08:00", "🧹", "Inpakken & schoonmaken", "Lodge of tipi netjes achterlaten zoals je het aantrof.", "free", "camp"),
       s("d7s3", "09:30", "🏕️", "Check-out voor 10:00", "Sleutel inleveren en laatste groetjes. Foto's maken bij het kamp!", "travel", "camp"),
-      s("d7s4", "10:00", "🚗", "Op weg naar Nederland!", "Navigeer richting huis. ~780 km · ca. 8 uur rijden.", "travel"),
+      s("d7s4", "10:00", "🚗", "Op weg naar Nederland!", "Navigeer richting huis. ~780 km · ca. 8 uur rijden.", "travel", null, ["d1", "a1", "a2"]),
       s("d7s5", "12:30", "🍔", "Lunch stop", "Pauzeren en bijtanken ergens in Jutland of Noord-Duitsland.", "food"),
       s("d7s6", "14:00", "🌉", "Grens terug", "Terug over de grens richting Nederland via Flensburg.", "travel"),
       s("d7s7", "18:00", "🏠", "Thuiskomst!", "Welkom thuis — met een kitesurf-diploma en een hoofd vol verhalen. 🪁", "travel"),

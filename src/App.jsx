@@ -50,7 +50,10 @@ function TabContent({ tab, tripDetail, navigate, showToast, onOpenTrip, setActiv
           {!isRoadtrip && <WindWidget />}
         </PageHero>
         <div className="page-content">
-          <DaySchedule onFocusMap={(id) => navigate({ tab: "map", _focus: id })} />
+          <DaySchedule
+            onFocusMap={(id) => navigate({ tab: "map", _focus: id })}
+            onFocusPack={() => navigate({ tab: "pack" })}
+          />
         </div>
       </>
     );
