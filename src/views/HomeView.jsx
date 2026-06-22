@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { colors } from "../constants/theme";
 import { useWeatherForecast, sessionVerdict } from "../hooks/useWeatherForecast";
 import { useTrip } from "../context/TripContext";
@@ -40,6 +40,135 @@ function getTripDates(startDate, endDate) {
     cur.setDate(cur.getDate() + 1);
   }
   return dates;
+}
+
+// ── Countdown banner ─────────────────────────────────────────────
+
+function useCountdown(targetISO) {
+  const getRemaining = () => {
+    const diff = new Date(targetISO + "T00:00:00") - new Date();
+    if (diff <= 0) return null;
+    const d = Math.floor(diff / 86400000);
+    const h = Math.floor((diff % 86400000) / 3600000);
+    const m = Math.floor((diff % 3600000) / 60000);
+    const s = Math.floor((diff % 60000) / 1000);
+    return { d, h, m, s };
+  };
+
+  const [remaining, setRemaining] = useState(getRemaining);
+  useEffect(() => {
+    const id = setInterval(() => setRemaining(getRemaining()), 1000);
+    return () => clearInterval(id);
+  }, [targetISO]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return remaining;
+}
+
+function CountdownUnit({ value, label }) {
+  return (
+    <div style={{ textAlign: "center", minWidth: 52 }}>
+      <div style={{
+        fontSize: 32, fontWeight: 900, color: colors.text,
+        lineHeight: 1, letterSpacing: "-0.02em", fontVariantNumeric: "tabular-nums",
+      }}>
+        {String(value).padStart(2, "0")}
+      </div>
+      <div style={{ fontSize: 10, fontWeight: 600, color: colors.textMuted, marginTop: 3, letterSpacing: "0.06em", textTransform: "uppercase" }}>
+        {label}
+      </div>
+    </div>
+  );
+}
+
+function CountdownBanner({ trips }) {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const active = trips.find((t) => today >= t.startDate && today <= t.endDate);
+  const next   = trips
+    .filter((t) => t.startDate > today)
+    .sort((a, b) => a.startDate.localeCompare(b.startDate))[0];
+
+  const target = active ?? next;
+  const remaining = useCountdown(active ? active.endDate : target?.startDate);
+
+  if (!target) return null;
+
+  const months = ["jan","feb","mrt","apr","mei","jun","jul","aug","sep","okt","nov","dec"];
+  const fmtShort = (iso) => {
+    const d = new Date(iso + "T12:00:00");
+    return `${d.getDate()} ${months[d.getMonth()]} ${d.getFullYear()}`;
+  };
+
+  const isLive = !!active;
+  const accentColor = isLive ? "#34D399" : colors.sky;
+
+  return (
+    <div style={{
+      background: colors.surface,
+      border: `1.5px solid ${accentColor}30`,
+      borderRadius: 16,
+      padding: "16px 18px",
+      marginBottom: 16,
+      position: "relative",
+      overflow: "hidden",
+    }}>
+      {/* Subtle glow */}
+      <div style={{
+        position: "absolute", top: 0, left: 0, right: 0, height: 2,
+        background: `linear-gradient(90deg, transparent, ${accentColor}60, transparent)`,
+      }} />
+
+      {/* Header */}
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <span style={{ fontSize: 22 }}>{target.flag ?? target.emoji}</span>
+        <div>
+          <div style={{ fontSize: 13, fontWeight: 800, color: colors.text }}>{target.name}</div>
+          <div style={{ fontSize: 11, color: colors.textMuted, marginTop: 1 }}>
+            {isLive
+              ? `🟢 Bezig · tot ${fmtShort(active.endDate)}`
+              : `📅 Vertrekt ${fmtShort(target.startDate)}`}
+          </div>
+        </div>
+        {isLive && (
+          <span style={{
+            marginLeft: "auto", fontSize: 9, fontWeight: 800,
+            color: "#34D399", background: "rgba(52,211,153,0.15)",
+            borderRadius: 8, padding: "3px 8px", letterSpacing: "0.06em",
+          }}>
+            LIVE
+          </span>
+        )}
+      </div>
+
+      {/* Countdown digits */}
+      {remaining ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+          {remaining.d > 0 && <CountdownUnit value={remaining.d} label="dagen" />}
+          {remaining.d > 0 && <Divider />}
+          <CountdownUnit value={remaining.h} label="uren" />
+          <Divider />
+          <CountdownUnit value={remaining.m} label="min" />
+          <Divider />
+          <CountdownUnit value={remaining.s} label="sec" />
+          <div style={{ marginLeft: "auto", fontSize: 11, color: colors.textMuted, alignSelf: "flex-end", paddingBottom: 2 }}>
+            {isLive ? "tot einde" : "tot vertrek"}
+          </div>
+        </div>
+      ) : (
+        <div style={{ fontSize: 13, color: "#34D399", fontWeight: 700 }}>
+          🎉 Reis is voorbij — tot de volgende!
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Divider() {
+  return (
+    <div style={{ fontSize: 24, fontWeight: 300, color: colors.surfaceBorder, alignSelf: "flex-start", paddingTop: 4, paddingBottom: 14, userSelect: "none" }}>
+      :
+    </div>
+  );
 }
 
 // ── Trip overview card ───────────────────────────────────────────
@@ -295,6 +424,8 @@ export default function HomeView({ onOpenTrip }) {
       </PageHero>
 
       <div className="page-content">
+        <CountdownBanner trips={trips} />
+
         <div style={{ fontSize: 11, fontWeight: 700, color: colors.textMuted, letterSpacing: "0.06em", textTransform: "uppercase", marginBottom: 10 }}>
           Mijn trips
         </div>
