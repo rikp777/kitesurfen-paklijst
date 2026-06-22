@@ -12,6 +12,7 @@ import { shareText } from "../utils/device";
 import Confetti from "../components/Confetti";
 import Header from "../components/Header";
 import SearchBar from "../components/SearchBar";
+import WeatherForecast from "../components/WeatherForecast";
 import CategoryCard from "../components/CategoryCard";
 import OutfitsSection from "../components/OutfitsSection";
 import ProofModal from "../components/modals/ProofModal";
@@ -109,6 +110,8 @@ export default function PackingView({ showToast }) {
 
       <div style={{ maxWidth: 480, margin: "-48px auto 0", padding: "0 16px", position: "relative", zIndex: 1 }}>
         <SearchBar value={search} onChange={setSearch} />
+
+        {!needle && <WeatherForecast />}
 
         {visibleByCategory.every(({ items }) => items.length === 0) && (
           <p style={{ color: colors.textMuted, fontSize: 14, textAlign: "center", padding: "24px 0" }}>
