@@ -68,7 +68,7 @@ function NowSeparator({ nowMin, nextSlotMin }) {
 
 // ── Tiny rain sparkline — half-hour bars, shown under the mm badge ─
 
-function TinyRainBars({ bars, maxP, startH }) {
+function TinyRainBars({ bars, maxP, startH, showLabels = true }) {
   const numHours = bars.length / 2;
   return (
     <div>
@@ -82,16 +82,18 @@ function TinyRainBars({ bars, maxP, startH }) {
           }} />
         ))}
       </div>
-      <div style={{ display: "flex", gap: 1, marginTop: 1 }}>
-        {Array.from({ length: numHours }, (_, i) => (
-          <div key={i} style={{
-            width: 7, flexShrink: 0, textAlign: "center",
-            fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.55,
-          }}>
-            {startH + i}
-          </div>
-        ))}
-      </div>
+      {showLabels && (
+        <div style={{ display: "flex", gap: 1, marginTop: 1 }}>
+          {Array.from({ length: numHours }, (_, i) => (
+            <div key={i} style={{
+              width: 7, flexShrink: 0, textAlign: "center",
+              fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.55,
+            }}>
+              {startH + i}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -532,35 +534,63 @@ export default function DaySchedule({ onFocusMap, onFocusPack }) {
                 padding: "10px 14px",
                 marginBottom: 12,
               }}>
-                {/* ── Title row — compact, single line ─────────── */}
+                {/* ── Title row ────────────────────────────────── */}
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ color: colors.text, fontWeight: 700, fontSize: 14, flex: 1 }}>
+                    {slot.title}
+                  </div>
+                  {isActive && (
+                    <span style={{
+                      fontSize: 9, fontWeight: 800, color: accent,
+                      background: `${accent}20`, borderRadius: 8,
+                      padding: "2px 7px", whiteSpace: "nowrap", letterSpacing: "0.03em",
+                      flexShrink: 0,
+                    }}>
+                      ▶ NU
+                    </span>
+                  )}
+                </div>
+
+                {/* ── Weather subtitle — one compact line ──────── */}
                 {(() => {
                   const h = slotHourly(day.date, slot.time);
                   const wx = wxDays?.find((d) => d.date === day.date);
-                  const tempBadge = h?.temp != null && wx
-                    ? <span style={{ fontSize: 11, color: colors.textMuted, whiteSpace: "nowrap", flexShrink: 0 }}>{wx.emoji} {h.temp}°</span>
-                    : null;
+                  if (!h || h.temp == null || !wx) return null;
+                  const wx2 = slotWeatherInfo(day.date, slot.time, endTime, hourlyData);
                   return (
-                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <div style={{ color: colors.text, fontWeight: 700, fontSize: 14, flex: 1 }}>
-                        {slot.title}
-                      </div>
-                      {isActive && (
-                        <span style={{
-                          fontSize: 9, fontWeight: 800, color: accent,
-                          background: `${accent}20`, borderRadius: 8,
-                          padding: "2px 7px", whiteSpace: "nowrap", letterSpacing: "0.03em",
-                          flexShrink: 0,
-                        }}>
-                          ▶ NU
-                        </span>
+                    <div style={{
+                      display: "flex", alignItems: "flex-end", flexWrap: "wrap",
+                      gap: "3px 10px", marginTop: 4, marginBottom: 2,
+                    }}>
+                      <span style={{ fontSize: 11, color: colors.textMuted, lineHeight: 1.4 }}>
+                        {wx.emoji} {h.temp}°
+                      </span>
+                      {wx2.hasTemp && (
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
+                          <span style={{ fontSize: 8, opacity: 0.65 }}>🌡</span>
+                          <TinyTempBars bars={wx2.tempBars} />
+                        </div>
                       )}
-                      {tempBadge}
+                      {wx2.hasRain && (
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 4 }}>
+                          <span style={{ fontSize: 10, color: "#60A5FA", fontWeight: 700, lineHeight: 1 }}>
+                            💧 {wx2.totalMm}mm
+                          </span>
+                          <TinyRainBars bars={wx2.bars} maxP={wx2.maxP} startH={wx2.startH} showLabels={false} />
+                        </div>
+                      )}
+                      {wx2.hasWind && (
+                        <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
+                          <span style={{ fontSize: 8, opacity: 0.65 }}>💨</span>
+                          <TinyWindBars bars={wx2.windBars} maxP={wx2.maxWind} />
+                        </div>
+                      )}
                     </div>
                   );
                 })()}
 
                 {/* ── Description ──────────────────────────────── */}
-                <div style={{ color: colors.textMuted, fontSize: 12.5, lineHeight: 1.5, marginTop: 4 }}>
+                <div style={{ color: colors.textMuted, fontSize: 12.5, lineHeight: 1.5, marginTop: 2 }}>
                   {slot.desc}
                 </div>
 
@@ -610,38 +640,6 @@ export default function DaySchedule({ onFocusMap, onFocusPack }) {
                     )}
                   </div>
                 )}
-
-                {/* ── Weather sparklines footer ─────────────────── */}
-                {!isPast && (() => {
-                  const wx2 = slotWeatherInfo(day.date, slot.time, endTime, hourlyData);
-                  if (!wx2.hasTemp && !wx2.hasRain && !wx2.hasWind) return null;
-                  return (
-                    <div style={{
-                      marginTop: 10, paddingTop: 8,
-                      borderTop: `1px solid ${colors.surfaceBorder}`,
-                      display: "flex", flexWrap: "wrap", gap: "4px 14px", alignItems: "flex-end",
-                    }}>
-                      {wx2.hasTemp && (
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3 }}>
-                          <span style={{ fontSize: 9, opacity: 0.8 }}>🌡</span>
-                          <TinyTempBars bars={wx2.tempBars} />
-                        </div>
-                      )}
-                      {wx2.hasRain && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 2, alignItems: "flex-start" }}>
-                          <span style={{ fontSize: 10, color: "#60A5FA", fontWeight: 700, lineHeight: 1 }}>💧 {wx2.totalMm}mm</span>
-                          <TinyRainBars bars={wx2.bars} maxP={wx2.maxP} startH={wx2.startH} />
-                        </div>
-                      )}
-                      {wx2.hasWind && (
-                        <div style={{ display: "flex", alignItems: "flex-end", gap: 3 }}>
-                          <span style={{ fontSize: 9, opacity: 0.8 }}>💨</span>
-                          <TinyWindBars bars={wx2.windBars} maxP={wx2.maxWind} />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })()}
               </div>
             </div>
           );
