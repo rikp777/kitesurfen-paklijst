@@ -101,50 +101,97 @@ const rainColor = (p) =>
   p >= 2 ? "#3B82F6" : p >= 0.5 ? "#60A5FA" : "#93C5FD";
 
 function slotTooltipRows(wx2, variant) {
-  const rows = [];
-  for (let i = 0; i < wx2.bars.length; i += 2) {
-    const h = wx2.startH + i / 2;
+  const rains = wx2.bars.filter((_, i) => i % 2 === 0);
+  const winds = wx2.windBars.filter((_, i) => i % 2 === 0);
+  const temps = wx2.tempBars.filter((_, i) => i % 2 === 0);
+
+  const maxRain = Math.max(...rains, 0.1);
+  const maxWind = Math.max(...winds, 1);
+  const validTemps = temps.filter((t) => t != null);
+  const minT = validTemps.length ? Math.min(...validTemps) : 0;
+  const maxT = validTemps.length ? Math.max(...validTemps) : 35;
+  const tRange = Math.max(maxT - minT, 1);
+
+  return rains.map((rain, idx) => {
+    const h = wx2.startH + idx;
     const label = `${String(h).padStart(2, "0")}:00`;
-    const rain = wx2.bars[i];
-    const wind = wx2.windBars[i];
-    const temp = wx2.tempBars[i];
+    const wind = winds[idx] ?? 0;
+    const temp = temps[idx] ?? null;
+
+    const extra = [
+      ...(variant !== "temp" && temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []),
+      ...(variant !== "rain" && rain >= 0.1 ? [{ emoji: "💧", text: `${rain}mm` }] : []),
+      ...(variant !== "wind" && wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : []),
+    ];
+
     if (variant === "temp") {
-      rows.push({
-        label, primary: temp != null ? `${temp}°` : "–", color: temp != null ? tempColor(temp) : colors.textMuted,
-        extra: [...(rain >= 0.1 ? [{ emoji: "💧", text: `${rain}mm` }] : []), ...(wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : [])],
-      });
+      return {
+        label, extra,
+        primary: temp != null ? `${temp}°` : "–",
+        color: temp != null ? tempColor(temp) : colors.textMuted,
+        barPct: temp != null ? Math.max(5, ((temp - minT) / tRange) * 100) : 0,
+      };
     } else if (variant === "rain") {
-      rows.push({
-        label, primary: rain >= 0.1 ? `${rain}mm` : "droog", color: rain >= 0.1 ? rainColor(rain) : colors.textMuted,
-        extra: [...(temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []), ...(wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : [])],
-      });
+      return {
+        label, extra,
+        primary: `${rain}mm`,
+        color: rain >= 0.1 ? rainColor(rain) : colors.textMuted,
+        barPct: rain >= 0.1 ? Math.max(5, (rain / maxRain) * 100) : 0,
+      };
     } else {
-      rows.push({
-        label, primary: wind > 0 ? `${wind}kn` : "kalm", color: wind > 0 ? windColor(wind) : colors.textMuted,
-        extra: [...(temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []), ...(rain >= 0.1 ? [{ emoji: "💧", text: `${rain}mm` }] : [])],
-      });
+      return {
+        label, extra,
+        primary: `${wind}kn`,
+        color: wind > 0 ? windColor(wind) : colors.textMuted,
+        barPct: wind > 0 ? Math.max(5, (wind / maxWind) * 100) : 0,
+      };
     }
-  }
-  return rows;
+  });
 }
 
 function dayTooltipRows(hours, variant) {
-  return hours.map(({ h, precip, wind, temp }) => {
+  const maxRain = Math.max(...hours.map((h) => h.precip), 0.1);
+  const maxWind = Math.max(...hours.map((h) => h.wind), 1);
+  const validTemps = hours.map((h) => h.temp).filter((t) => t != null);
+  const minT = validTemps.length ? Math.min(...validTemps) : 0;
+  const maxT = validTemps.length ? Math.max(...validTemps) : 35;
+  const tRange = Math.max(maxT - minT, 1);
+
+  // For rain/wind day views, skip empty hours to keep the list short
+  const filtered = variant === "rain"
+    ? hours.filter((h) => h.precip >= 0.1)
+    : variant === "wind"
+    ? hours.filter((h) => h.wind > 0)
+    : hours;
+
+  return filtered.map(({ h, precip, wind, temp }) => {
     const label = `${String(h).padStart(2, "0")}:00`;
+    const extra = [
+      ...(variant !== "temp" && temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []),
+      ...(variant !== "rain" && precip >= 0.1 ? [{ emoji: "💧", text: `${precip}mm` }] : []),
+      ...(variant !== "wind" && wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : []),
+    ];
+
     if (variant === "temp") {
       return {
-        label, primary: temp != null ? `${temp}°` : "–", color: temp != null ? tempColor(temp) : colors.textMuted,
-        extra: [...(precip >= 0.1 ? [{ emoji: "💧", text: `${precip}mm` }] : []), ...(wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : [])],
+        label, extra,
+        primary: temp != null ? `${temp}°` : "–",
+        color: temp != null ? tempColor(temp) : colors.textMuted,
+        barPct: temp != null ? Math.max(5, ((temp - minT) / tRange) * 100) : 0,
       };
     } else if (variant === "rain") {
       return {
-        label, primary: precip >= 0.1 ? `${precip}mm` : "droog", color: precip >= 0.1 ? rainColor(precip) : colors.textMuted,
-        extra: [...(temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []), ...(wind > 0 ? [{ emoji: "💨", text: `${wind}kn` }] : [])],
+        label, extra,
+        primary: `${precip}mm`,
+        color: rainColor(precip),
+        barPct: Math.max(5, (precip / maxRain) * 100),
       };
     } else {
       return {
-        label, primary: wind > 0 ? `${wind}kn` : "kalm", color: wind > 0 ? windColor(wind) : colors.textMuted,
-        extra: [...(temp != null ? [{ emoji: "🌡", text: `${temp}°` }] : []), ...(precip >= 0.1 ? [{ emoji: "💧", text: `${precip}mm` }] : [])],
+        label, extra,
+        primary: `${wind}kn`,
+        color: windColor(wind),
+        barPct: Math.max(5, (wind / maxWind) * 100),
       };
     }
   });

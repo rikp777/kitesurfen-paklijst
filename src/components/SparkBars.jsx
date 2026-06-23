@@ -50,14 +50,16 @@ export function buildTempBars(values, range) {
 // ── Tooltip ───────────────────────────────────────────────────────
 
 /**
- * tooltip rows: { label, primary, color?, extra?: [{ emoji, text }] }
- * Hovering a row expands its `extra` items inline (level 2).
+ * rows: { label, primary, color, barPct: 0-100, extra?: [{ emoji, text }] }
+ *
+ * barPct drives a mini inline bar giving visual weight to each row.
+ * Hovering a row expands extra items inline (level 2 detail).
  */
 function SparkTooltip({ title, rows, anchor, onEnter, onLeave }) {
   const [expandedRow, setExpandedRow] = useState(null);
 
-  const above = anchor.bottom + 240 > window.innerHeight;
-  const left = Math.min(Math.max(8, anchor.left), window.innerWidth - 216);
+  const above = anchor.bottom + 260 > window.innerHeight;
+  const left = Math.min(Math.max(8, anchor.left), window.innerWidth - 224);
 
   return createPortal(
     <div
@@ -66,67 +68,106 @@ function SparkTooltip({ title, rows, anchor, onEnter, onLeave }) {
         zIndex: 9999,
         left,
         ...(above
-          ? { bottom: window.innerHeight - anchor.top + 6 }
-          : { top: anchor.bottom + 6 }),
+          ? { bottom: window.innerHeight - anchor.top + 8 }
+          : { top: anchor.bottom + 8 }),
         background: "#0A1628",
         border: `1px solid ${colors.surfaceBorder}`,
-        borderRadius: 10,
+        borderRadius: 12,
         padding: "10px 12px",
-        minWidth: 160,
-        maxWidth: 216,
-        maxHeight: 220,
+        minWidth: 170,
+        maxWidth: 224,
+        maxHeight: 260,
         overflowY: "auto",
-        boxShadow: "0 8px 32px rgba(0,0,0,0.6)",
+        boxShadow: "0 12px 40px rgba(0,0,0,0.65)",
         fontSize: 11,
         color: colors.text,
         pointerEvents: "auto",
+        animation: "sparkTooltipIn 0.12s ease-out",
       }}
       onMouseEnter={onEnter}
       onMouseLeave={onLeave}
     >
+      <style>{`
+        @keyframes sparkTooltipIn {
+          from { opacity: 0; transform: translateY(4px); }
+          to   { opacity: 1; transform: translateY(0);   }
+        }
+      `}</style>
+
       {title && (
         <div style={{
-          fontWeight: 700, fontSize: 11, marginBottom: 7,
-          paddingBottom: 6, borderBottom: `1px solid ${colors.surfaceBorder}`,
+          fontWeight: 700, fontSize: 11, marginBottom: 8,
+          paddingBottom: 7, borderBottom: `1px solid ${colors.surfaceBorder}`,
+          color: colors.text,
         }}>
           {title}
         </div>
       )}
-      {rows.map((row, i) => (
-        <div
-          key={i}
-          onMouseEnter={() => setExpandedRow(i)}
-          onMouseLeave={() => setExpandedRow(null)}
-          style={{
-            padding: "3px 5px",
-            borderRadius: 5,
-            background: expandedRow === i ? "rgba(255,255,255,0.04)" : "transparent",
-            marginBottom: 1,
-          }}
-        >
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-            <span style={{ color: colors.textMuted, fontVariantNumeric: "tabular-nums", fontSize: 10 }}>
-              {row.label}
-            </span>
-            <span style={{ fontWeight: 700, color: row.color ?? colors.text }}>
-              {row.primary}
-            </span>
-          </div>
-          {expandedRow === i && row.extra?.length > 0 && (
-            <div style={{
-              marginTop: 4, paddingTop: 4,
-              borderTop: `1px solid ${colors.surfaceBorder}`,
-              display: "flex", gap: 10, flexWrap: "wrap",
-            }}>
-              {row.extra.map((e, j) => (
-                <span key={j} style={{ fontSize: 10, color: colors.textMuted, display: "flex", alignItems: "center", gap: 3 }}>
-                  {e.emoji} {e.text}
-                </span>
-              ))}
+
+      {rows.map((row, i) => {
+        const isExpanded = expandedRow === i;
+        return (
+          <div
+            key={i}
+            onMouseEnter={() => setExpandedRow(i)}
+            onMouseLeave={() => setExpandedRow(null)}
+            style={{
+              padding: "4px 6px",
+              borderRadius: 6,
+              background: isExpanded ? "rgba(255,255,255,0.05)" : "transparent",
+              marginBottom: 2,
+              transition: "background 0.1s",
+            }}
+          >
+            {/* Row: label · mini bar · value */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <span style={{
+                color: colors.textMuted, fontSize: 10,
+                fontVariantNumeric: "tabular-nums", flexShrink: 0, width: 34,
+              }}>
+                {row.label}
+              </span>
+              {/* mini inline bar */}
+              <div style={{
+                flex: 1, height: 3, borderRadius: 2,
+                background: `${colors.surfaceBorder}40`, overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${row.barPct ?? 0}%`,
+                  height: "100%",
+                  background: row.color ?? colors.textMuted,
+                  borderRadius: 2,
+                  transition: "width 0.15s ease",
+                }} />
+              </div>
+              <span style={{
+                fontWeight: 700, fontSize: 11, color: row.color ?? colors.text,
+                flexShrink: 0, minWidth: 32, textAlign: "right",
+              }}>
+                {row.primary}
+              </span>
             </div>
-          )}
-        </div>
-      ))}
+
+            {/* Level 2: expanded extra details on row hover */}
+            {isExpanded && row.extra?.length > 0 && (
+              <div style={{
+                marginTop: 5, paddingTop: 5,
+                borderTop: `1px solid ${colors.surfaceBorder}`,
+                display: "flex", gap: 10, flexWrap: "wrap",
+              }}>
+                {row.extra.map((e, j) => (
+                  <span key={j} style={{
+                    fontSize: 10, color: colors.textMuted,
+                    display: "flex", alignItems: "center", gap: 3,
+                  }}>
+                    {e.emoji} {e.text}
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>,
     document.body
   );
@@ -137,14 +178,13 @@ function SparkTooltip({ title, rows, anchor, onEnter, onLeave }) {
 /**
  * Tiny sparkline bar chart.
  *
- * bars: Array of { height: 0-100, minHeight?: px, color: string }
+ * bars: { height: 0-100, minHeight?: px, color: string }[]
  *   — produced by buildRainBars / buildWindBars / buildTempBars
  *
- * tooltip: { title: string, rows: [...] } — optional hover popover.
- *   Each row: { label, primary, color?, extra?: [{ emoji, text }] }
- *   Hovering a row expands extra details (level 2).
+ * tooltip: { title, rows } — optional hover popover.
+ *   rows: { label, primary, color, barPct, extra?: [{emoji,text}] }[]
  *
- * showLabels + startH: renders hour numbers below the bars (one per 2 bars).
+ * showLabels + startH: renders hour numbers below the bars.
  */
 export default function SparkBars({
   bars,
@@ -180,7 +220,7 @@ export default function SparkBars({
       ref={containerRef}
       onMouseEnter={tooltip ? show : undefined}
       onMouseLeave={tooltip ? scheduleHide : undefined}
-      style={{ display: "inline-block", cursor: tooltip ? "default" : undefined }}
+      style={{ display: "inline-block" }}
     >
       <div style={{ display: "flex", gap: 1, height, alignItems: "flex-end" }}>
         {bars.map((bar, i) => (
@@ -200,18 +240,10 @@ export default function SparkBars({
       {showLabels && startH != null && (
         <div style={{ display: "flex", gap: 1, marginTop: 1 }}>
           {Array.from({ length: numLabels }, (_, i) => (
-            <div
-              key={i}
-              style={{
-                width: 7,
-                flexShrink: 0,
-                textAlign: "center",
-                fontSize: 6,
-                lineHeight: 1,
-                color: colors.textMuted,
-                opacity: 0.55,
-              }}
-            >
+            <div key={i} style={{
+              width: 7, flexShrink: 0, textAlign: "center",
+              fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.55,
+            }}>
               {startH + i}
             </div>
           ))}
