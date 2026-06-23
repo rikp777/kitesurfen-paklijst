@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { colors } from "../constants/theme";
+import SparkBars, { buildRainBars, buildWindBars, buildTempBars } from "./SparkBars";
 import { days as dkDays, scheduleTypeColor as dkTypeColor } from "../data/schedule";
 import { days as rtDays, scheduleTypeColor as rtTypeColor } from "../data/schedule-roadtrip-2026";
 import { locations as dkLocations, locationCategories as dkCategories } from "../data/locations";
@@ -66,69 +67,6 @@ function NowSeparator({ nowMin, nextSlotMin }) {
   );
 }
 
-// ── Tiny rain sparkline — half-hour bars, shown under the mm badge ─
-
-function TinyRainBars({ bars, maxP, startH, showLabels = true }) {
-  const numHours = bars.length / 2;
-  return (
-    <div>
-      <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
-        {bars.map((p, i) => (
-          <div key={i} style={{
-            width: 3, flexShrink: 0,
-            height: p >= 0.1 ? `${Math.max(25, (p / maxP) * 100)}%` : 0,
-            background: p >= 2 ? "#3B82F6" : p >= 0.5 ? "#60A5FA" : "#93C5FD",
-            borderRadius: "1px 1px 0 0",
-          }} />
-        ))}
-      </div>
-      {showLabels && (
-        <div style={{ display: "flex", gap: 1, marginTop: 1 }}>
-          {Array.from({ length: numHours }, (_, i) => (
-            <div key={i} style={{
-              width: 7, flexShrink: 0, textAlign: "center",
-              fontSize: 6, lineHeight: 1, color: colors.textMuted, opacity: 0.55,
-            }}>
-              {startH + i}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function TinyWindBars({ bars, maxP }) {
-  return (
-    <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
-      {bars.map((w, i) => (
-        <div key={i} style={{
-          width: 3, flexShrink: 0,
-          height: w > 0 ? `${Math.max(15, (w / maxP) * 100)}%` : 0,
-          background: w >= 25 ? "#F97316" : w >= 15 ? "#34D399" : w >= 8 ? "#6EE7B7" : "#4B5563",
-          borderRadius: "1px 1px 0 0",
-        }} />
-      ))}
-    </div>
-  );
-}
-
-function TinyTempBars({ bars }) {
-  const tempColor = (t) =>
-    t >= 30 ? "#EF4444" : t >= 22 ? "#F97316" : t >= 16 ? "#FCD34D" : t >= 8 ? "#6EE7B7" : "#93C5FD";
-  return (
-    <div style={{ display: "flex", gap: 1, height: 8, alignItems: "flex-end" }}>
-      {bars.map((t, i) => (
-        <div key={i} style={{
-          width: 3, flexShrink: 0,
-          height: t != null ? `${Math.max(15, (Math.max(0, t) / 35) * 100)}%` : 0,
-          background: t != null ? tempColor(t) : "transparent",
-          borderRadius: "1px 1px 0 0",
-        }} />
-      ))}
-    </div>
-  );
-}
 
 function slotWeatherInfo(date, startTime, endTime, hourlyData) {
   const startH = parseInt(startTime.slice(0, 2));
@@ -180,17 +118,10 @@ function DaySparklines({ date, hourlyData }) {
   const maxTemp = Math.max(...temps);
   const tempRange = Math.max(maxTemp - minTemp, 1);
 
-  const windColor = (w) =>
-    w >= 25 ? "#F97316" : w >= 15 ? "#34D399" : w >= 8 ? "#6EE7B7" : `${colors.surfaceBorder}60`;
-  const tempColor = (t) =>
-    t >= 30 ? "#EF4444" : t >= 22 ? "#F97316" : t >= 16 ? "#FCD34D" : t >= 8 ? "#6EE7B7" : "#93C5FD";
-
-  const barRow = (emoji, bars) => (
+  const barRow = (emoji, element) => (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 4, marginBottom: 3 }}>
       <span style={{ fontSize: 9, lineHeight: 1, width: 12, flexShrink: 0 }}>{emoji}</span>
-      <div style={{ display: "flex", gap: 1, height: 6, alignItems: "flex-end" }}>
-        {bars}
-      </div>
+      {element}
     </div>
   );
 
@@ -204,32 +135,15 @@ function DaySparklines({ date, hourlyData }) {
 
   return (
     <div style={{ marginTop: 10, paddingTop: 10, borderTop: `1px solid ${colors.surfaceBorder}` }}>
-      {anyTemp && barRow("🌡", hours.map(({ h, temp }) => (
-        <div key={h} style={{
-          width: 3, flexShrink: 0,
-          height: temp != null ? `${Math.max(15, ((temp - minTemp) / tempRange) * 100)}%` : 0,
-          background: temp != null ? tempColor(temp) : "transparent",
-          borderRadius: "1px 1px 0 0",
-        }} />
-      )))}
-      {anyRain && barRow("💧", hours.map(({ h, precip }) => (
-        <div key={h} style={{
-          width: 3, flexShrink: 0,
-          height: precip >= 0.1 ? `${Math.max(25, (precip / maxRain) * 100)}%` : "1px",
-          background: precip >= 0.1
-            ? (precip >= 2 ? "#3B82F6" : precip >= 0.5 ? "#60A5FA" : "#93C5FD")
-            : `${colors.surfaceBorder}20`,
-          borderRadius: "1px 1px 0 0",
-        }} />
-      )))}
-      {anyWind && barRow("💨", hours.map(({ h, wind }) => (
-        <div key={h} style={{
-          width: 3, flexShrink: 0,
-          height: wind > 0 ? `${Math.max(15, (wind / maxWind) * 100)}%` : 0,
-          background: windColor(wind),
-          borderRadius: "1px 1px 0 0",
-        }} />
-      )))}
+      {anyTemp && barRow("🌡", (
+        <SparkBars height={6} bars={buildTempBars(hours.map((h) => h.temp), { min: minTemp, max: maxTemp })} />
+      ))}
+      {anyRain && barRow("💧", (
+        <SparkBars height={6} bars={buildRainBars(hours.map((h) => h.precip), maxRain, { dayView: true })} />
+      ))}
+      {anyWind && barRow("💨", (
+        <SparkBars height={6} bars={buildWindBars(hours.map((h) => h.wind), maxWind)} />
+      ))}
       {hourLabels}
     </div>
   );
@@ -568,7 +482,7 @@ export default function DaySchedule({ onFocusMap, onFocusPack }) {
                       {wx2.hasTemp && (
                         <div style={{ display: "flex", alignItems: "flex-end", gap: 2 }}>
                           <span style={{ fontSize: 8, opacity: 0.65 }}>🌡</span>
-                          <TinyTempBars bars={wx2.tempBars} />
+                          <SparkBars bars={buildTempBars(wx2.tempBars)} />
                         </div>
                       )}
                       {wx2.hasRain && (
@@ -576,7 +490,7 @@ export default function DaySchedule({ onFocusMap, onFocusPack }) {
                           <span style={{ fontSize: 10, color: "#60A5FA", fontWeight: 700, lineHeight: 1 }}>
                             💧 {wx2.totalMm}mm
                           </span>
-                          <TinyRainBars bars={wx2.bars} maxP={wx2.maxP} startH={wx2.startH} showLabels={false} />
+                          <SparkBars bars={buildRainBars(wx2.bars, wx2.maxP)} />
                         </div>
                       )}
                       {wx2.hasWind && (
@@ -587,7 +501,7 @@ export default function DaySchedule({ onFocusMap, onFocusPack }) {
                           }}>
                             💨 {h.wind}kn
                           </span>
-                          <TinyWindBars bars={wx2.windBars} maxP={wx2.maxWind} />
+                          <SparkBars bars={buildWindBars(wx2.windBars, wx2.maxWind)} />
                         </div>
                       )}
                     </div>
